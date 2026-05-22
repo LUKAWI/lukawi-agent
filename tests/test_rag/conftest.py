@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import tempfile
 from pathlib import Path
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -51,3 +52,19 @@ def gbk_encoded_file(temp_dir):
     path = temp_dir / "chinese_gbk.txt"
     path.write_bytes("这是一份中文技术文档\n包含系统架构说明\n".encode("gbk"))
     return path
+
+
+@pytest.fixture
+def mock_embedder():
+    return MagicMock()
+
+
+@pytest.fixture
+def mock_store():
+    store = MagicMock()
+    store.initialize = AsyncMock()
+    store.close = MagicMock()
+    store.delete_document = AsyncMock(return_value=0)
+    store.add_documents = AsyncMock(return_value=[])
+    store.add_conversation = AsyncMock(return_value="conv_001")
+    return store
