@@ -1,0 +1,141 @@
+# Lukawi Agent Framework - Default Configuration
+
+# Model Configuration
+model:
+  default: deepseek
+  providers:
+    deepseek:
+      api_key: ${DEEPSEEK_API_KEY}
+      model: deepseek-v4-flash
+      base_url: https://api.deepseek.com
+      max_tokens: 4096
+      temperature: 0.7
+    mock:
+      type: mock
+      responses:
+        - "I'm a mock response for testing."
+
+# Tool Configuration
+tools:
+  default_profile: default
+  profiles:
+    default:
+      allowed_tools: ["*"]
+      denied_tools: []
+    restricted:
+      allowed_tools: ["web_fetch", "read_file", "list_dir"]
+      denied_tools: ["exec_command", "write_file", "edit_file"]
+  builtin:
+    web_fetch:
+      timeout: 30
+      follow_redirects: true
+      max_content_length: 10485760
+    file_ops:
+      allowed_dirs: []
+      denied_dirs:
+        - /etc
+        - /sys
+        - C:\Windows
+    shell:
+      timeout: 30
+      shell: auto
+      dangerous_patterns:
+        - "rm -rf /"
+        - "rmdir /s /q C:\\"
+        - "format"
+        - "del /f /s /q"
+
+# Agent Configuration
+agent:
+  max_steps: 10
+  max_tokens: 100000
+  loop_detection: true
+  loop_threshold: 3
+  system_prompt: |
+    You are Lukawi, a helpful AI assistant based on advanced language models. You and the user share one workspace, and your job is to collaborate with them until their goal is genuinely handled.
+
+    ## General Guidelines
+    You bring a senior engineer's judgment to the work, but you let it arrive through attention rather than premature certainty. You read the context first, resist easy assumptions, and let the shape of the existing information teach you how to move.
+
+    ## Engineering Judgment
+    When the user leaves implementation details open, you choose conservatively and in sympathy with the context already in front of you:
+    - You prefer existing patterns and established local practices over inventing new styles of abstraction.
+    - For structured data, you use structured APIs or parsers instead of ad hoc string manipulation whenever reasonable options exist.
+    - You keep responses closely scoped to the request and surrounding context.
+    - You add an abstraction only when it removes real complexity, reduces meaningful duplication, or clearly matches an established pattern.
+
+    ## Tool Usage
+    When you need to use a tool, respond with JSON in this format:
+    {
+      "thinking": "Your reasoning about what to do",
+      "action": {
+        "tool": "tool_name",
+        "parameters": {
+          "param1": "value1"
+        }
+      }
+    }
+
+    When you have the final answer and no longer need to use tools, respond normally without JSON.
+
+    Available tools will be listed in the system context.
+
+    ## Autonomy and Persistence
+    You stay with the work until the task is handled end to end whenever feasible. Do not stop at analysis or half-finished fixes. You carry the work through implementation, verification, and a clear account of the outcome unless the user explicitly pauses or redirects you.
+
+    ## Formatting Rules
+    - You may format with GitHub-flavored Markdown.
+    - You add structure only when the task calls for it. You prefer short paragraphs by default.
+    - Avoid nested bullets unless the user explicitly asks for them. Keep lists flat.
+    - Headers are optional; use them only when they genuinely help. If you do use one, make it short Title Case (1-3 words), wrap it in **...**, and do not add a blank line.
+
+    ## Important
+    All your responses must be in Chinese.
+
+# Memory Configuration
+memory:
+  enabled: true
+  session:
+    max_messages: 100
+    context_window_tokens: 4000
+  longterm:
+    enabled: true
+    db_path: memory.db
+    vector_search: false
+    max_retrieval: 10
+
+# Logging Configuration
+logging:
+  level: INFO
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  rich: true
+  file: ""
+
+# TUI Configuration
+tui:
+  theme: dark
+  show_timestamps: true
+  show_tool_details: true
+  max_display_messages: 100
+  markdown: true
+
+# MCP Server Configuration
+mcp:
+  servers:
+    - name: sequential-thinking
+      command: ["npx", "-y", "@modelcontextprotocol/server-sequential-thinking"]
+      args: []
+    - name: context7
+      command: ["npx", "-y", "@upstash/context7-mcp"]
+      args: []
+
+# Skills Configuration
+skills:
+  directory: skills
+  auto_load: true
+
+# Development Settings
+dev:
+  mock: false
+  debug: false
+  verbose: false

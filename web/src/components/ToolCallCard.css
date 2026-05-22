@@ -1,0 +1,108 @@
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.tool-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius, 8px);
+  font-size: 12px;
+  margin-top: 6px;
+  overflow: hidden;
+  transition: box-shadow var(--transition-fast, 150ms ease);
+}
+
+.tool-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  cursor: pointer;
+  user-select: none;
+  transition: background var(--transition-fast, 150ms ease);
+}
+
+.tool-header:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.tool-header:hover {
+  background: var(--bg-tertiary);
+}
+
+.tool-running .tool-header {
+  background: color-mix(in srgb, var(--accent, #3b82f6) 8%, transparent);
+}
+
+.tool-success .tool-header {
+  background: color-mix(in srgb, var(--success, #22c55e) 10%, transparent);
+}
+
+.tool-error .tool-header {
+  background: color-mix(in srgb, var(--error, #ef4444) 10%, transparent);
+}
+
+.tool-status-icon {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+}
+
+.tool-running .tool-status-icon {
+  color: var(--accent, #3b82f6);
+  animation: spin 1s linear infinite;
+}
+
+.tool-success .tool-status-icon {
+  color: var(--success, #22c55e);
+}
+
+.tool-error .tool-status-icon {
+  color: var(--error, #ef4444);
+}
+
+.tool-name {
+  font-weight: 600;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tool-status {
+  color: var(--text-secondary);
+  font-size: 11px;
+  flex-shrink: 0;
+}
+
+.tool-toggle {
+  color: var(--text-secondary);
+  flex-shrink: 0;
+  transition: transform var(--transition-fast, 150ms ease);
+}
+
+.tool-details {
+  padding: 8px 10px 10px;
+  border-top: 1px solid var(--border);
+}
+
+.tool-params {
+  color: var(--text-secondary);
+  margin-bottom: 6px;
+  white-space: pre-wrap;
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+.tool-result pre {
+  background: var(--bg-primary);
+  padding: 6px 10px;
+  border-radius: 4px;
+  overflow-x: auto;
+  font-size: 11px;
+  max-height: 120px;
+  overflow-y: auto;
+  line-height: 1.5;
+}

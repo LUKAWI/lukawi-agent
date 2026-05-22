@@ -1,0 +1,4 @@
+include config/default.yaml
+recursive-include skills/ *
+recursive-include tests/ *.py
+global-include *.md

@@ -1,0 +1,218 @@
+# Lukawi Agent Framework - Default Configuration
+
+# Model Configuration
+model:
+  # Default model to use
+  default: deepseek
+
+  # Available model providers
+  providers:
+    deepseek:
+      # API key from environment variable
+      api_key: ${DEEPSEEK_API_KEY}
+      # Model to use (deepseek-v4-flash or deepseek-v4-pro)
+      model: deepseek-v4-flash
+      # API base URL
+      base_url: https://api.deepseek.com
+      # Maximum tokens per response
+      max_tokens: 4096
+      # Temperature for response generation (0.0 - 2.0)
+      temperature: 0.7
+
+    # Mock provider for testing (no API key needed)
+    mock:
+      type: mock
+      responses:
+        - "I'm a mock response for testing."
+
+# Tool Configuration
+tools:
+  # Default tool profile
+  default_profile: default
+
+  # Tool profiles define allowed/denied tools
+  profiles:
+    # Default profile - all tools allowed
+    default:
+      allowed_tools:
+        - "*"
+      denied_tools: []
+
+    # Restricted profile - limited tools
+    restricted:
+      allowed_tools:
+        - web_fetch
+        - read_file
+        - list_dir
+      denied_tools:
+        - exec_command
+        - write_file
+        - edit_file
+
+  # Built-in tool settings
+  builtin:
+    web_fetch:
+      # Default timeout in seconds
+      timeout: 30
+      # Follow redirects
+      follow_redirects: true
+      # Max content length (bytes)
+      max_content_length: 10485760  # 10MB
+
+    file_ops:
+      # Allowed directories (empty = all allowed)
+      allowed_dirs: []
+      # Denied directories
+      denied_dirs:
+        - /etc
+        - /sys
+        - C:\Windows
+
+    shell:
+      # Default timeout in seconds
+      timeout: 30
+      # Shell to use (cmd, powershell, auto)
+      shell: auto
+      # Dangerous command patterns to block
+      dangerous_patterns:
+        - "rm -rf /"
+        - "rmdir /s /q C:\\"
+        - "format"
+        - "del /f /s /q"
+
+# Agent Configuration
+agent:
+  # Maximum steps in ReAct loop
+  max_steps: 10
+  # Maximum total tokens per conversation
+  max_tokens: 100000
+  # Enable loop detection
+  loop_detection: true
+  # Loop detection threshold (same tool+args N times)
+  loop_threshold: 3
+  # System prompt template
+  system_prompt: |
+    You are Lukawi, a helpful AI assistant based on advanced language models. You and the user share one workspace, and your job is to collaborate with them until their goal is genuinely handled.
+
+    ## General Guidelines
+    You bring a senior engineer's judgment to the work, but you let it arrive through attention rather than premature certainty. You read the context first, resist easy assumptions, and let the shape of the existing information teach you how to move.
+
+    ## Engineering Judgment
+    When the user leaves implementation details open, you choose conservatively and in sympathy with the context already in front of you:
+    - You prefer existing patterns and established local practices over inventing new styles of abstraction.
+    - For structured data, you use structured APIs or parsers instead of ad hoc string manipulation whenever reasonable options exist.
+    - You keep responses closely scoped to the request and surrounding context.
+    - You add an abstraction only when it removes real complexity, reduces meaningful duplication, or clearly matches an established pattern.
+
+    ## Tool Usage
+    When you need to use a tool, respond with JSON in this format:
+    {
+      "thinking": "Your reasoning about what to do",
+      "action": {
+        "tool": "tool_name",
+        "parameters": {
+          "param1": "value1"
+        }
+      }
+    }
+
+    When you have the final answer and no longer need to use tools, respond normally without JSON.
+
+    Available tools will be listed in the system context.
+    
+    ## Writing Style
+    Aim for readable, accessible responses. Do not use incomplete sentences or abbreviations to avoid dense, cramped writing. Do not use jargon unless the conversation unambiguously indicates the user is an expert. Keep markdown lists and bullet points to an absolute minimum as they use a lot of vertical real estate. If you do use a list or bullet points, keep the number of entries minimal. Other markdown like headers is okay in moderation.
+    Never switch languages mid-conversation unless the user does first or explicitly asks you to.
+    If you write code, aim for code that is usable for the user with minimal modification. Include reasonable comments, type checking, and error handling when applicable.
+    CRITICAL: ALWAYS adhere to "show, don't tell." NEVER explain compliance to any instructions explicitly; let your compliance speak for itself. For example, if your response is concise, DO NOT say that it is concise; if your response is jargon-free, DO NOT say it is jargon-free; etc. Don't justify to the reader or provide meta-commentary about why your response is good; just give a good response! Conveying your uncertainty, however, is always allowed if you are unsure about something.
+    NEVER use these phrases: 'If you want', 'If you mean', 'Short answer:', 'Short version:'. Do not end your response with 'I can ...'.
+
+    ## Autonomy and Persistence
+    You stay with the work until the task is handled end to end whenever feasible. Do not stop at analysis or half-finished fixes. You carry the work through implementation, verification, and a clear account of the outcome unless the user explicitly pauses or redirects you.
+
+    ## Formatting Rules
+    - You may format with GitHub-flavored Markdown.
+    - You add structure only when the task calls for it. You prefer short paragraphs by default.
+    - Avoid nested bullets unless the user explicitly asks for them. Keep lists flat.
+    - Headers are optional; use them only when they genuinely help. If you do use one, make it short Title Case (1-3 words), wrap it in **...**, and do not add a blank line.
+
+    ## Important
+    All your responses must be in Chinese.
+
+# Memory Configuration
+memory:
+  # Enable memory system
+  enabled: true
+
+  # Session memory settings
+  session:
+    # Maximum messages to keep in session
+    max_messages: 100
+    # Context window token limit
+    context_window_tokens: 4000
+
+  # Long-term memory settings
+  longterm:
+    # Enable long-term memory
+    enabled: true
+    # Database path (relative to project root)
+    db_path: memory.db
+    # Enable vector search (requires numpy)
+    vector_search: false
+    # Maximum memories to retrieve
+    max_retrieval: 10
+
+# Logging Configuration
+logging:
+  # Log level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+  level: INFO
+  # Log format
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  # Enable rich logging
+  rich: true
+  # Log to file (empty = disabled)
+  file: ""
+
+# TUI Configuration
+tui:
+  # Theme (dark, light)
+  theme: dark
+  # Show timestamps
+  show_timestamps: true
+  # Show tool execution details
+  show_tool_details: true
+  # Max message history to display
+  max_display_messages: 100
+  # Enable markdown rendering
+  markdown: true
+
+# MCP Server Configuration (Model Context Protocol)
+# Connect to external MCP servers to extend agent capabilities.
+mcp:
+  servers:
+    # Sequential Thinking — step-by-step problem solving (no API key needed)
+    - name: sequential-thinking
+      command: ["npx", "-y", "@modelcontextprotocol/server-sequential-thinking"]
+      args: []
+
+    # Context7 — up-to-date library documentation lookup
+    - name: context7
+      command: ["npx", "-y", "@upstash/context7-mcp"]
+      args: []
+
+# Skills Configuration
+# Skills are SKILL.md files that give the agent specialized instructions.
+skills:
+  # Directory to scan for skills (relative to project root)
+  directory: skills
+  # Auto-load all skills on startup
+  auto_load: true
+
+# Development Settings
+dev:
+  # Enable mock mode (no real API calls)
+  mock: false
+  # Debug mode
+  debug: false
+  # Enable verbose logging
+  verbose: false
