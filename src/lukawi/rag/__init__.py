@@ -8,6 +8,7 @@ from lukawi.rag.exceptions import (
     RAGError,
     StorageError,
 )
+from lukawi.rag.retriever import Retriever  # noqa: E402
 from lukawi.rag.store import DocumentChunk, SearchResult, VectorStore
 
 __all__ = [
