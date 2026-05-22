@@ -25,6 +25,8 @@ from lukawi.skills.loader import SkillLoader
 from lukawi.skills.executor import build_skill_prompt
 from lukawi.memory.manager import MemoryManager
 
+logger = logging.getLogger(__name__)
+
 
 @dataclass
 class AgentContext:
@@ -94,16 +96,45 @@ def create_agent_context(
 
     model_registry = _setup_model_registry(config, mock=mock)
 
+    # === RAG initialization ===
+    rag_manager = None
+    if config.rag.enabled and config.rag.dashscope.api_key:
+        from lukawi.rag.embedder import DashScopeEmbedder
+        from lukawi.rag.store import VectorStore
+        from lukawi.rag.manager import RAGManager
+
+        embedder = DashScopeEmbedder(
+            api_key=config.rag.dashscope.api_key,
+            model=config.rag.dashscope.model,
+            dimensions=config.rag.dashscope.dimensions,
+        )
+        store = VectorStore(persist_dir=config.rag.chroma_db_dir)
+        rag_manager = RAGManager(
+            embedder=embedder,
+            store=store,
+            chunk_size=config.rag.chunk_size,
+            chunk_overlap=config.rag.chunk_overlap,
+        )
+        asyncio.run(rag_manager.initialize())
+        logger.info("RAG initialized with ChromaDB at %s", config.rag.chroma_db_dir)
+    elif config.rag.enabled:
+        logger.warning("RAG enabled but no DASHSCOPE_API_KEY set — RAG disabled")
+
     memory_manager = None
     if config.memory.enabled:
         memory_manager = MemoryManager(
             db_path=config.memory.longterm.db_path,
             session_max_messages=config.memory.session.max_messages,
             longterm_enabled=config.memory.longterm.enabled,
+            rag_manager=rag_manager,
         )
         asyncio.run(memory_manager.initialize())
 
     tool_registry = _setup_tool_registry(memory_manager=memory_manager)
+
+    # RAG tools
+    from lukawi.tools.builtin.rag_search import register_rag_tools
+    register_rag_tools(tool_registry, rag_manager)
 
     mcp_manager = MCPManager()
     project_configs = [
