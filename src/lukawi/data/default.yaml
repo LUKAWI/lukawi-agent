@@ -139,3 +139,23 @@ dev:
   mock: false
   debug: false
   verbose: false
+
+# ========== RAG 检索增强生成 ==========
+rag:
+  enabled: true
+
+  # DashScope Embedding API（阿里云）
+  dashscope:
+    api_key: ${DASHSCOPE_API_KEY}
+    model: text-embedding-v3
+    dimensions: 1024
+
+  # ChromaDB 向量数据库
+  chroma_db_dir: ~/.lukawi/chroma_db
+
+  # 文档分块参数
+  chunk_size: 500
+  chunk_overlap: 50
+
+  # 检索参数
+  max_retrieval: 10
