@@ -40,7 +40,7 @@ class RAGManager:
 
     async def close(self) -> None:
         """Close store resources."""
-        self.store.close()
+        await self.store.close()
         self.retriever = None
         logger.info("RAGManager closed")
 

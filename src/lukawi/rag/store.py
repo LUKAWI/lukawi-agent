@@ -41,11 +41,21 @@ class VectorStore:
         self._collection_docs: chromadb.Collection | None = None
         self._collection_conv: chromadb.Collection | None = None
 
+    @property
+    def collection_docs(self) -> chromadb.Collection | None:
+        """Public read-only access to the documents collection."""
+        return self._collection_docs
+
+    @property
+    def collection_conv(self) -> chromadb.Collection | None:
+        """Public read-only access to the conversations collection."""
+        return self._collection_conv
+
     # ------------------------------------------------------------------
     # Lifecycle
     # ------------------------------------------------------------------
 
-    def initialize(self) -> None:
+    async def initialize(self) -> None:
         """Create the persistent client and ensure both collections exist."""
         self._client = chromadb.PersistentClient(
             path=str(self._persist_dir),
@@ -54,7 +64,7 @@ class VectorStore:
         self._collection_docs = self._client.get_or_create_collection("documents")
         self._collection_conv = self._client.get_or_create_collection("conversations")
 
-    def close(self) -> None:
+    async def close(self) -> None:
         """Release the ChromaDB client and reset collection references."""
         self._collection_docs = None
         self._collection_conv = None
@@ -64,7 +74,7 @@ class VectorStore:
     # Documents
     # ------------------------------------------------------------------
 
-    def add_documents(self, chunks: list[DocumentChunk]) -> list[str]:
+    async def add_documents(self, chunks: list[DocumentChunk]) -> list[str]:
         """Insert document chunks and return their ids."""
         if not chunks or self._collection_docs is None:
             return []
@@ -82,7 +92,7 @@ class VectorStore:
         self._collection_docs.add(ids=ids, documents=documents, metadatas=metadatas)
         return ids
 
-    def search_documents(
+    async def search_documents(
         self, query_text: str, limit: int = 5
     ) -> list[SearchResult]:
         """Semantic search over the document collection."""
@@ -94,7 +104,7 @@ class VectorStore:
         )
         return self._parse_results(results)
 
-    def delete_document(self, source_path: str) -> int:
+    async def delete_document(self, source_path: str) -> int:
         """Remove all chunks belonging to *source_path*.  Returns the count removed."""
         if self._collection_docs is None:
             return 0
@@ -114,7 +124,7 @@ class VectorStore:
     # Conversations
     # ------------------------------------------------------------------
 
-    def add_conversation(
+    async def add_conversation(
         self, content: str, metadata: dict[str, Any] | None = None
     ) -> str:
         """Store a conversation entry and return its UUID4 id."""
@@ -129,7 +139,7 @@ class VectorStore:
         )
         return conv_id
 
-    def search_conversations(
+    async def search_conversations(
         self,
         query_text: str,
         user_id: str,
@@ -146,7 +156,7 @@ class VectorStore:
         )
         return self._parse_results(results)
 
-    def delete_conversation(self, conv_id: str) -> bool:
+    async def delete_conversation(self, conv_id: str) -> bool:
         """Delete a single conversation by id.  Return True if it existed."""
         if self._collection_conv is None:
             return False
