@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from typing import TYPE_CHECKING
 
 from lukawi.agent.core import ReActAgent
 from lukawi.config.models import AppConfig, TUIConfig
@@ -25,3 +26,8 @@ class ServerState:
     tui_config: TUIConfig | None = None
     active_skills: dict[str, str] = field(default_factory=dict)
     memory_manager: MemoryManager | None = None
+    rag_manager: RAGManager | None = None
+
+
+if TYPE_CHECKING:
+    from lukawi.rag.manager import RAGManager

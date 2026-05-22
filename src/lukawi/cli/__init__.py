@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+from __future__ import annotations
+
 import asyncio
 import logging
 from dataclasses import dataclass
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from lukawi.config.settings import load_config
 from lukawi.config.models import AgentConfig, AppConfig, DeepSeekConfig, MockConfig
@@ -25,6 +28,9 @@ from lukawi.skills.loader import SkillLoader
 from lukawi.skills.executor import build_skill_prompt
 from lukawi.memory.manager import MemoryManager
 
+if TYPE_CHECKING:
+    from lukawi.rag.manager import RAGManager
+
 logger = logging.getLogger(__name__)
 
 
@@ -38,6 +44,7 @@ class AgentContext:
     mcp_configs: list[MCPClientConfig]
     skill_loader: SkillLoader | None
     agent: ReActAgent
+    rag_manager: RAGManager | None = None
 
 
 def _setup_model_registry(config: AppConfig, mock: bool = False) -> ModelRegistry:
@@ -183,11 +190,14 @@ def create_agent_context(
         mcp_configs=all_configs,
         skill_loader=skill_loader,
         agent=agent,
+        rag_manager=rag_manager,
     )
 
 
 def cleanup_context(ctx: AgentContext) -> None:
     if ctx.memory_manager:
         asyncio.run(ctx.memory_manager.close())
+    if ctx.rag_manager:
+        asyncio.run(ctx.rag_manager.close())
     if ctx.mcp_manager.connected_count > 0:
         asyncio.run(ctx.mcp_manager.disconnect_all())

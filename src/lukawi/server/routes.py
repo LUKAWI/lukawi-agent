@@ -1,7 +1,9 @@
 """REST API routes for Lukawi server."""
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException
+from pathlib import Path
+
+from fastapi import APIRouter, HTTPException, UploadFile
 from pydantic import BaseModel
 
 
@@ -189,5 +191,53 @@ def create_router(state) -> APIRouter:
         if not success:
             raise HTTPException(404, "Session not found")
         return {"ok": True}
+
+    # ===== RAG Endpoints =====
+
+    @router.get("/rag/documents")
+    async def list_rag_documents():
+        if not state.rag_manager:
+            return {"documents": [], "enabled": False}
+        docs = await state.rag_manager.list_documents()
+        return {"documents": docs, "enabled": True}
+
+    @router.post("/rag/upload")
+    async def upload_rag_document(file: UploadFile):
+        if not state.rag_manager:
+            raise HTTPException(400, "RAG system not enabled")
+        if not file.filename:
+            raise HTTPException(400, "No file provided")
+        ext = Path(file.filename).suffix.lower()
+        if ext not in (".txt", ".md", ".markdown"):
+            raise HTTPException(400, f"Unsupported file type: {ext}. Supported: .txt, .md")
+        content = await file.read()
+        tmp = Path(file.filename)
+        tmp.write_bytes(content)
+        try:
+            result = await state.rag_manager.upload_document(tmp)
+            return {"ok": True, "result": result}
+        finally:
+            if tmp.exists():
+                tmp.unlink()
+
+    class DeleteDocumentRequest(BaseModel):
+        source_path: str
+
+    @router.post("/rag/documents/delete")
+    async def delete_rag_document(req: DeleteDocumentRequest):
+        if not state.rag_manager:
+            raise HTTPException(400, "RAG system not enabled")
+        count = await state.rag_manager.remove_document(req.source_path)
+        return {"ok": True, "deleted": count}
+
+    @router.get("/rag/status")
+    async def get_rag_status():
+        if not state.rag_manager:
+            return {"enabled": False}
+        return {
+            "enabled": True,
+            "chunk_size": state.rag_manager.chunk_size,
+            "chunk_overlap": state.rag_manager.chunk_overlap,
+        }
 
     return router

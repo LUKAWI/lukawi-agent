@@ -30,6 +30,7 @@ def run_webui(
             config=ctx.config,
             tui_config=ctx.config.tui,
             memory_manager=ctx.memory_manager,
+            rag_manager=ctx.rag_manager,
         )
 
         app = create_app(server_state)
