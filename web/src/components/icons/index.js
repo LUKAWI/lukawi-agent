@@ -13,3 +13,5 @@ export { default as SkillIcon } from './SkillIcon';
 export { default as MCPIcon } from './MCPIcon';
 export { default as InfoIcon } from './InfoIcon';
 export { default as WarningIcon } from './WarningIcon';
+export { default as DocumentIcon } from './DocumentIcon';
+export { default as HistoryIcon } from './HistoryIcon';

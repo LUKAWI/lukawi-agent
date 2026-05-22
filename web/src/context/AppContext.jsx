@@ -16,6 +16,10 @@ const initialState = {
   theme: 'dark',
   sidebarVisible: true,
   statusTokens: 0,
+  sessions: [],
+  currentSessionId: null,
+  ragDocuments: [],
+  ragEnabled: false,
 };
 
 function reducer(state, action) {
@@ -82,6 +86,14 @@ function reducer(state, action) {
       return { ...state, messages: [], streamingId: null };
     case 'SET_STATUS':
       return { ...state, ...action.payload };
+    case 'SET_SESSIONS':
+      return { ...state, sessions: action.payload };
+    case 'SET_CURRENT_SESSION':
+      return { ...state, currentSessionId: action.payload };
+    case 'SET_RAG_DOCUMENTS':
+      return { ...state, ragDocuments: action.payload.documents, ragEnabled: action.payload.enabled };
+    case 'SET_RAG_ENABLED':
+      return { ...state, ragEnabled: action.payload };
     default:
       return state;
   }

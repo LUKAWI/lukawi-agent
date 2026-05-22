@@ -30,6 +30,23 @@ export const api = {
   setTheme: (theme) => request('/api/config/theme', { method: 'POST', body: JSON.stringify({ theme }) }),
   getStatus: () => request('/api/status'),
 
+  getSessions: () => request('/api/sessions'),
+  createSession: (name) => request('/api/sessions', { method: 'POST', body: JSON.stringify({ name }) }),
+  renameSession: (id, name) => request(`/api/sessions/${id}`, { method: 'PATCH', body: JSON.stringify({ name }) }),
+  deleteSession: (id) => request(`/api/sessions/${id}`, { method: 'DELETE' }),
+  searchMemory: (q, limit = 10) => request(`/api/memory/search?q=${encodeURIComponent(q)}&limit=${limit}`),
+  clearMemory: () => request('/api/memory/clear', { method: 'POST' }),
+  getRagDocuments: () => request('/api/rag/documents'),
+  getRagStatus: () => request('/api/rag/status'),
+  uploadRagDocument: async (file) => {
+    const form = new FormData();
+    form.append('file', file);
+    const res = await fetch('/api/rag/upload', { method: 'POST', body: form });
+    if (!res.ok) throw new Error((await res.json()).error || 'Upload failed');
+    return res.json();
+  },
+  deleteRagDocument: (sourcePath) => request('/api/rag/documents/delete', { method: 'POST', body: JSON.stringify({ source_path: sourcePath }) }),
+
   chatStream(message, { onEvent, onError, onDone }) {
     const controller = new AbortController();
 
