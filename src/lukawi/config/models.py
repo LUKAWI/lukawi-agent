@@ -159,6 +159,23 @@ class DevConfig(BaseModel):
     verbose: bool = False
 
 
+class DashScopeConfig(BaseModel):
+    """DashScope Embedding API configuration."""
+    api_key: str = ""
+    model: str = "text-embedding-v3"
+    dimensions: int = Field(default=1024, ge=256, le=1024)
+
+
+class RAGConfig(BaseModel):
+    """RAG (Retrieval-Augmented Generation) configuration."""
+    enabled: bool = True
+    dashscope: DashScopeConfig = Field(default_factory=DashScopeConfig)
+    chroma_db_dir: str = str(Path.home() / ".lukawi" / "chroma_db")
+    chunk_size: int = Field(default=500, ge=100, le=2000)
+    chunk_overlap: int = Field(default=50, ge=0, le=200)
+    max_retrieval: int = 10
+
+
 class AppConfig(BaseModel):
     model: ModelConfig = Field(default_factory=ModelConfig)
     tools: ToolPolicyConfig = Field(default_factory=ToolPolicyConfig)
@@ -169,3 +186,4 @@ class AppConfig(BaseModel):
     mcp: MCPConfig = Field(default_factory=MCPConfig)
     skills: SkillsConfig = Field(default_factory=SkillsConfig)
     dev: DevConfig = Field(default_factory=DevConfig)
+    rag: RAGConfig = Field(default_factory=RAGConfig)
