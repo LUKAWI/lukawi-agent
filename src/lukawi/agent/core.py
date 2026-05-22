@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 import json
+import logging
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, AsyncGenerator
+
+logger = logging.getLogger(__name__)
 
 from lukawi.config.models import AgentConfig
 from lukawi.llm.base import LLMProvider, LLMResponse, Message, MessageRole
@@ -72,6 +75,14 @@ class ReActAgent:
         """
         self.llm = provider
 
+    async def _maybe_index_conversation(self) -> None:
+        """Index current conversation turn into RAG if available."""
+        if getattr(self, 'memory_manager', None) and hasattr(self.memory_manager, 'rag') and self.memory_manager.rag:
+            try:
+                await self.memory_manager.save_conversation()
+            except Exception as e:
+                logger.warning("Failed to index conversation: %s", e)
+
     async def run(
         self,
         user_message: str,
@@ -107,6 +118,7 @@ class ReActAgent:
                     yield AgentEvent(AgentEventType.FINAL_ANSWER, {
                         "content": response.content
                     })
+                    await self._maybe_index_conversation()
                     return
 
                 results: list[tuple[Any, ToolResult]] = []
