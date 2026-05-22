@@ -1,5 +1,9 @@
 """Long-term memory with SQLite storage."""
 
+# NOTE: LongTermMemory is deprecated in favor of RAGManager with ChromaDB.
+# It is retained as a fallback when rag.enabled=False in config.
+# New code should use RAGManager via MemoryManager.rag.
+
 from __future__ import annotations
 
 import json

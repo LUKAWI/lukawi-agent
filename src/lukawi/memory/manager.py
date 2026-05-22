@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
 
-from lukawi.memory.session import SessionMemory
-from lukawi.memory.longterm import LongTermMemory, Memory
-from lukawi.memory.session_manager import SessionManager
 from lukawi.llm.base import Message, MessageRole
+from lukawi.memory.longterm import LongTermMemory, Memory
+from lukawi.memory.session import SessionMemory
+from lukawi.memory.session_manager import SessionManager
+from lukawi.rag.manager import RAGManager
 
 
 class MemoryManager:
@@ -17,19 +19,29 @@ class MemoryManager:
         db_path: str = ":memory:",
         session_max_messages: int = 100,
         longterm_enabled: bool = True,
+        rag_manager: RAGManager | None = None,
     ) -> None:
         self.session = SessionMemory(max_messages=session_max_messages)
-        self.longterm = LongTermMemory(db_path=db_path) if longterm_enabled else None
+        self.rag = rag_manager
+        self.longterm = (
+            LongTermMemory(db_path=db_path)
+            if (longterm_enabled and rag_manager is None)
+            else None
+        )
         self.longterm_enabled = longterm_enabled
         self.session_manager = SessionManager(db_path=db_path)
 
     async def initialize(self) -> None:
-        if self.longterm:
+        if self.rag:
+            await self.rag.initialize()
+        elif self.longterm:
             await self.longterm.initialize()
         await self.session_manager.initialize()
 
     async def close(self) -> None:
-        if self.longterm:
+        if self.rag:
+            await self.rag.close()
+        elif self.longterm:
             await self.longterm.close()
         await self.session_manager.close()
 
@@ -42,19 +54,26 @@ class MemoryManager:
         agent_id: str = "lukawi",
         summary: str | None = None,
     ) -> str | None:
-        if not self.longterm:
-            return None
-
         if summary is None:
             messages = self.session.get_history(limit=10)
             summary = self._generate_summary(messages)
 
-        return await self.longterm.add(
-            content=summary,
-            metadata={"type": "conversation_summary"},
-            user_id=user_id,
-            agent_id=agent_id,
-        )
+        if self.rag:
+            return await self.rag.index_conversation(
+                content=summary,
+                user_id=user_id,
+                metadata={"agent_id": agent_id, "type": "conversation_summary"},
+            )
+
+        if self.longterm:
+            return await self.longterm.add(
+                content=summary,
+                metadata={"type": "conversation_summary"},
+                user_id=user_id,
+                agent_id=agent_id,
+            )
+
+        return None
 
     async def recall(
         self,
@@ -62,10 +81,18 @@ class MemoryManager:
         user_id: str = "default",
         limit: int = 5,
     ) -> list[Memory]:
-        if not self.longterm:
-            return []
+        if self.rag:
+            results = await self.rag.search(
+                query=query, user_id=user_id, limit=limit
+            )
+            return [self._search_result_to_memory(r) for r in results]
 
-        return await self.longterm.search(query=query, user_id=user_id, limit=limit)
+        if self.longterm:
+            return await self.longterm.search(
+                query=query, user_id=user_id, limit=limit
+            )
+
+        return []
 
     def get_context(self, max_tokens: int = 4000) -> list[Message]:
         return self.session.get_context_window(max_tokens)
@@ -93,3 +120,14 @@ class MemoryManager:
 
         body = ". ".join(parts) if parts else "No exchanges"
         return f"Conversation: {body}"
+
+    def _search_result_to_memory(self, r) -> Memory:
+        return Memory(
+            id=r.chunk_id,
+            content=r.content,
+            metadata=r.metadata,
+            user_id="default",
+            agent_id="lukawi",
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
+        )
