@@ -2,6 +2,14 @@
 
 from __future__ import annotations
 
+from lukawi.rag.exceptions import (
+    DocumentLoadError,
+    EmbeddingError,
+    RAGError,
+    StorageError,
+)
+from lukawi.rag.store import DocumentChunk, SearchResult, VectorStore
+
 __all__ = [
     "RAGManager",
     "VectorStore",
