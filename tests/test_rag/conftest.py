@@ -10,7 +10,7 @@ import pytest
 
 @pytest.fixture
 def temp_dir():
-    with tempfile.TemporaryDirectory() as tmp:
+    with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmp:
         yield Path(tmp)
 
 
