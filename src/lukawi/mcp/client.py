@@ -27,7 +27,7 @@ class MCPServerConfig:
 _JSON_TYPE_MAP: dict[str, ToolParameterType] = {
     "string": ToolParameterType.STRING,
     "number": ToolParameterType.NUMBER,
-    "integer": ToolParameterType.NUMBER,
+    "integer": ToolParameterType.INTEGER,
     "boolean": ToolParameterType.BOOLEAN,
 }
 
@@ -182,12 +182,21 @@ class MCPClient:
             "name": name,
             "arguments": arguments
         })
-        
+
         content = response.get("content", [])
         if content:
-            text_parts = [c.get("text", "") for c in content if c.get("type") == "text"]
-            return ToolResult.success(result="\n".join(text_parts))
-        
+            text_parts = []
+            has_error = False
+            for c in content:
+                if c.get("type") == "text":
+                    text_parts.append(c.get("text", ""))
+                    if c.get("isError"):
+                        has_error = True
+            result_text = "\n".join(text_parts)
+            if has_error:
+                return ToolResult.error(error=result_text)
+            return ToolResult.success(result=result_text)
+
         return ToolResult.success(result="")
     
     async def _send_request(

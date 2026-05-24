@@ -53,6 +53,7 @@ class MemoryManager:
         user_id: str = "default",
         agent_id: str = "lukawi",
         summary: str | None = None,
+        session_id: str | None = None,
     ) -> str | None:
         if summary is None:
             messages = self.session.get_history(limit=10)
@@ -63,6 +64,7 @@ class MemoryManager:
                 content=summary,
                 user_id=user_id,
                 metadata={"agent_id": agent_id, "type": "conversation_summary"},
+                session_id=session_id,
             )
 
         if self.longterm:
@@ -80,10 +82,12 @@ class MemoryManager:
         query: str,
         user_id: str = "default",
         limit: int = 5,
+        session_id: str | None = None,
+        source_path: str | None = None,
     ) -> list[Memory]:
         if self.rag:
             results = await self.rag.search(
-                query=query, user_id=user_id, limit=limit
+                query=query, user_id=user_id, limit=limit, session_id=session_id, source_path=source_path
             )
             return [self._search_result_to_memory(r) for r in results]
 
@@ -122,12 +126,18 @@ class MemoryManager:
         return f"Conversation: {body}"
 
     def _search_result_to_memory(self, r) -> Memory:
+        created_str = r.metadata.get("created_at")
+        try:
+            created_at = datetime.fromisoformat(created_str) if created_str else datetime.now(UTC)
+        except (ValueError, TypeError):
+            created_at = datetime.now(UTC)
         return Memory(
             id=r.chunk_id,
             content=r.content,
             metadata=r.metadata,
-            user_id="default",
-            agent_id="lukawi",
-            created_at=datetime.now(UTC),
-            updated_at=datetime.now(UTC),
+            user_id=r.metadata.get("user_id", "default"),
+            agent_id=r.metadata.get("agent_id", "lukawi"),
+            created_at=created_at,
+            updated_at=created_at,
+            score=r.score,
         )

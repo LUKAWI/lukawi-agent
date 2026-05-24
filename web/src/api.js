@@ -23,6 +23,7 @@ export const api = {
   useModel: (name) => request('/api/models/use', { method: 'POST', body: JSON.stringify({ name }) }),
   getSkills: () => request('/api/skills'),
   loadSkill: (name) => request('/api/skills/load', { method: 'POST', body: JSON.stringify({ name }) }),
+  toggleSkill: (name, enabled) => request('/api/skills/toggle', { method: 'POST', body: JSON.stringify({ name, enabled }) }),
   getMcp: () => request('/api/mcp'),
   connectMcp: () => request('/api/mcp/connect', { method: 'POST' }),
   disconnectMcp: () => request('/api/mcp/disconnect', { method: 'POST' }),
@@ -34,7 +35,14 @@ export const api = {
   createSession: (name) => request('/api/sessions', { method: 'POST', body: JSON.stringify({ name }) }),
   renameSession: (id, name) => request(`/api/sessions/${id}`, { method: 'PATCH', body: JSON.stringify({ name }) }),
   deleteSession: (id) => request(`/api/sessions/${id}`, { method: 'DELETE' }),
-  searchMemory: (q, limit = 10) => request(`/api/memory/search?q=${encodeURIComponent(q)}&limit=${limit}`),
+  getSessionMessages: (id) => request(`/api/sessions/${id}/messages`),
+  searchMemory: (q, limit = 10, sessionId = '') => {
+    let url = `/api/memory/search?q=${encodeURIComponent(q)}&limit=${limit}`;
+    if (sessionId) url += `&session_id=${encodeURIComponent(sessionId)}`;
+    return request(url);
+  },
+  getMemoryStats: () => request('/api/memory/stats'),
+  saveMemory: (content) => request('/api/memory/save', { method: 'POST', body: JSON.stringify({ content }) }),
   clearMemory: () => request('/api/memory/clear', { method: 'POST' }),
   getRagDocuments: () => request('/api/rag/documents'),
   getRagStatus: () => request('/api/rag/status'),
@@ -47,13 +55,13 @@ export const api = {
   },
   deleteRagDocument: (sourcePath) => request('/api/rag/documents/delete', { method: 'POST', body: JSON.stringify({ source_path: sourcePath }) }),
 
-  chatStream(message, { onEvent, onError, onDone }) {
+  chatStream(message, { onEvent, onError, onDone, sessionId }) {
     const controller = new AbortController();
 
     fetch(`${BASE}/api/chat`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message }),
+      body: JSON.stringify({ message, session_id: sessionId || '' }),
       signal: controller.signal,
     }).then(async (response) => {
       if (!response.ok) {

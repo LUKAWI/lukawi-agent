@@ -129,7 +129,7 @@ class LoggingConfig(BaseModel):
 
 
 class TUIConfig(BaseModel):
-    theme: str = "lukawi-dark"
+    theme: str = "light"
     show_timestamps: bool = True
     show_tool_details: bool = True
     show_sidebar: bool = False

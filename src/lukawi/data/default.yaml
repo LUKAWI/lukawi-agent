@@ -10,10 +10,12 @@ model:
       base_url: https://api.deepseek.com
       max_tokens: 4096
       temperature: 0.7
-    mock:
-      type: mock
-      responses:
-        - "I'm a mock response for testing."
+    deepseek-v4-pro:
+      api_key: ${DEEPSEEK_API_KEY}
+      model: deepseek-v4-pro
+      base_url: https://api.deepseek.com
+      max_tokens: 4096
+      temperature: 0.7
 
 # Tool Configuration
 tools:
@@ -113,7 +115,7 @@ logging:
 
 # TUI Configuration
 tui:
-  theme: dark
+  theme: light
   show_timestamps: true
   show_tool_details: true
   max_display_messages: 100

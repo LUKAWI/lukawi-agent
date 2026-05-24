@@ -67,4 +67,8 @@ def mock_store():
     store.delete_document = AsyncMock(return_value=0)
     store.add_documents = AsyncMock(return_value=[])
     store.add_conversation = AsyncMock(return_value="conv_001")
+    # Mock _run_sync to execute the passed callable directly
+    async def _run_sync(call, *args, **kwargs):
+        return call(*args, **kwargs) if callable(call) else call
+    store._run_sync = _run_sync
     return store

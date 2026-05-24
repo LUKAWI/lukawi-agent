@@ -94,6 +94,13 @@ EDIT_FILE_TOOL = ToolDefinition(
             name="new_text",
             type=ToolParameterType.STRING,
             description="Replacement text"
+        ),
+        ToolParameter(
+            name="encoding",
+            type=ToolParameterType.STRING,
+            description="File encoding",
+            required=False,
+            default="utf-8"
         )
     ],
     category="filesystem",
@@ -182,7 +189,8 @@ async def write_file_handler(
 async def edit_file_handler(
     path: str,
     old_text: str,
-    new_text: str
+    new_text: str,
+    encoding: str = "utf-8"
 ) -> ToolResult:
     try:
         file_path = Path(path).resolve()
@@ -194,13 +202,13 @@ async def edit_file_handler(
         if not file_path.exists():
             return ToolResult.error(f"File not found: {path}")
 
-        content = file_path.read_text(encoding="utf-8")
+        content = file_path.read_text(encoding=encoding)
 
         if old_text not in content:
             return ToolResult.error(f"Text not found in {path}")
 
         new_content = content.replace(old_text, new_text)
-        file_path.write_text(new_content, encoding="utf-8")
+        file_path.write_text(new_content, encoding=encoding)
 
         return ToolResult.success(
             result=f"Replaced text in {path}",

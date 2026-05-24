@@ -427,6 +427,73 @@ class TestFullPipeline:
 
 
 # ---------------------------------------------------------------------------
+# RAG Integration
+# ---------------------------------------------------------------------------
+
+class TestRAGIntegration:
+    async def test_rag_search_tool_in_agent(self, full_tool_registry):
+        """Agent can call rag_search tool and receive results."""
+        from lukawi.tools.builtin.rag_search import register_rag_tools
+
+        class FakeRAGManager:
+            async def search(self, query, sources=None, limit=5, source_path=None):
+                class FakeResult:
+                    content = "Lukawi Agent 框架支持 RAG 检索"
+                    score = 0.95
+                    metadata = {"source_path": "guide.md", "type": "document"}
+                return [FakeResult()]
+            async def upload_document(self, file_path):
+                return {"filename": "test.md", "chunks": 3, "replaced": False}
+            async def list_documents(self):
+                return []
+
+        register_rag_tools(full_tool_registry, rag_manager=FakeRAGManager())
+
+        tool_call = ToolCall(
+            id="call_rag", type="function",
+            function=FunctionCall(name="rag_search", arguments=json.dumps({"query": "RAG 框架"})),
+        )
+        llm = MockProvider(responses=[
+            LLMResponse(tool_calls=[tool_call]),
+            LLMResponse(content="I found a document about the RAG framework."),
+        ])
+        agent = ReActAgent(llm=llm, tools=full_tool_registry, executor=ToolExecutor(),
+                          config=AgentConfig(max_steps=5))
+
+        events = []
+        async for event in agent.run("Search RAG docs"):
+            events.append(event)
+
+        tool_results = [e for e in events if e.type == AgentEventType.TOOL_RESULT]
+        assert len(tool_results) >= 1
+        result: ToolResult = tool_results[0].data["result"]
+        assert result.status == ToolResultStatus.SUCCESS, f"Expected SUCCESS, got {result.status}: {result.error_message}"
+        assert result.metadata["count"] >= 1
+
+    async def test_rag_search_without_manager_returns_error(self, full_tool_registry):
+        """Agent handles rag_search when RAG is not configured."""
+        tool_call = ToolCall(
+            id="call_rag", type="function",
+            function=FunctionCall(name="rag_search", arguments=json.dumps({"query": "test"})),
+        )
+        llm = MockProvider(responses=[
+            LLMResponse(tool_calls=[tool_call]),
+            LLMResponse(content="RAG system is not available."),
+        ])
+        agent = ReActAgent(llm=llm, tools=full_tool_registry, executor=ToolExecutor(),
+                          config=AgentConfig(max_steps=5))
+
+        events = []
+        async for event in agent.run("Search without RAG"):
+            events.append(event)
+
+        tool_results = [e for e in events if e.type == AgentEventType.TOOL_RESULT]
+        assert len(tool_results) >= 1
+        result: ToolResult = tool_results[0].data["result"]
+        assert result.status == ToolResultStatus.ERROR
+
+
+# ---------------------------------------------------------------------------
 # Streaming
 # ---------------------------------------------------------------------------
 

@@ -1,6 +1,7 @@
 """REST API routes for Lukawi server."""
 from __future__ import annotations
 
+import tempfile
 from pathlib import Path
 
 from fastapi import APIRouter, HTTPException, UploadFile
@@ -15,8 +16,25 @@ class SkillLoadRequest(BaseModel):
     name: str
 
 
+class SkillToggleRequest(BaseModel):
+    name: str
+    enabled: bool
+
+
 class ThemeRequest(BaseModel):
     theme: str
+
+
+class SaveMemoryRequest(BaseModel):
+    content: str
+
+
+class CreateSessionRequest(BaseModel):
+    name: str = "新对话"
+
+
+class DeleteDocumentRequest(BaseModel):
+    source_path: str
 
 
 def create_router(state) -> APIRouter:
@@ -41,7 +59,7 @@ def create_router(state) -> APIRouter:
         state.model_registry.use(req.name)
         if state.agent:
             provider = state.model_registry.current
-            state.agent.switch_provider(req.name, provider)
+            state.agent.switch_model(req.name, provider)
         return {"ok": True}
 
     @router.get("/skills")
@@ -53,10 +71,25 @@ def create_router(state) -> APIRouter:
                 "name": s.name,
                 "description": s.description,
                 "triggers": list(s.triggers) if s.triggers else [],
+                "selected": s.name in state.selected_skills,
             }
             for s in state.skill_loader.list_skills()
         ]
         return {"skills": skills}
+
+    @router.post("/skills/toggle")
+    async def toggle_skill(req: SkillToggleRequest):
+        if not state.skill_loader:
+            raise HTTPException(400, "Skill system not initialized")
+        skill = state.skill_loader.get_skill(req.name)
+        if not skill:
+            raise HTTPException(400, f"Skill '{req.name}' not found")
+        if req.enabled:
+            state.selected_skills.add(req.name)
+        else:
+            state.selected_skills.discard(req.name)
+            state.active_skills.pop(req.name, None)
+        return {"ok": True, "selected": list(state.selected_skills)}
 
     @router.post("/skills/load")
     async def load_skill(req: SkillLoadRequest):
@@ -84,7 +117,6 @@ def create_router(state) -> APIRouter:
     async def connect_mcp():
         if not state.mcp_manager:
             raise HTTPException(400, "No MCP manager")
-        import asyncio
 
         await state.mcp_manager.connect_all(state.mcp_configs)
         if state.tool_registry:
@@ -102,7 +134,7 @@ def create_router(state) -> APIRouter:
     async def get_config():
         tui = state.tui_config
         return {
-            "theme": tui.theme if tui else "dark",
+            "theme": tui.theme if tui else "light",
             "showTimestamps": tui.show_timestamps if tui else True,
             "showToolDetails": tui.show_tool_details if tui else True,
             "maxSteps": (
@@ -132,40 +164,76 @@ def create_router(state) -> APIRouter:
         }
 
     @router.get("/memory/search")
-    async def search_memory(q: str = "", limit: int = 10):
+    async def search_memory(q: str = "", limit: int = 10, session_id: str = ""):
         if not state.memory_manager:
             raise HTTPException(400, "Memory system not initialized")
         if not q.strip():
             return {"memories": []}
-        memories = await state.memory_manager.recall(query=q, limit=limit)
+        sid = session_id.strip() or None
+        memories = await state.memory_manager.recall(query=q, limit=limit, session_id=sid)
         return {
             "memories": [
                 {
                     "id": m.id,
                     "content": m.content,
+                    "metadata": m.metadata,
                     "created_at": m.created_at.isoformat(),
+                    "score": m.score,
                 }
                 for m in memories
             ]
         }
 
-    @router.post("/memory/clear")
-    async def clear_memory():
+    @router.post("/memory/save")
+    async def save_memory(req: SaveMemoryRequest):
         if not state.memory_manager:
             raise HTTPException(400, "Memory system not initialized")
+        memory_id = await state.memory_manager.save_conversation(summary=req.content)
+        return {"id": memory_id, "ok": True}
+
+    @router.post("/memory/clear")
+    async def clear_memory(session_id: str = ""):
+        if not state.memory_manager:
+            raise HTTPException(400, "Memory system not initialized")
+        cleared = 0
         if state.memory_manager.longterm:
             await state.memory_manager.longterm.clear(user_id="default")
-        return {"ok": True}
+        if state.memory_manager.rag:
+            if session_id:
+                cleared = await state.memory_manager.rag.store.clear_conversations_by_session(session_id)
+            else:
+                cleared = await state.memory_manager.rag.store.clear_conversations()
+        return {"ok": True, "cleared": cleared, "session_id": session_id or None}
+
+    @router.get("/memory/stats")
+    async def memory_stats():
+        if not state.memory_manager:
+            return {"enabled": False, "mode": "none", "session_messages": 0}
+        mode = "rag" if state.memory_manager.rag else ("longterm" if state.memory_manager.longterm else "session_only")
+        return {
+            "enabled": True,
+            "mode": mode,
+            "session_messages": state.memory_manager.session.message_count,
+            "rag_enabled": state.memory_manager.rag is not None,
+        }
 
     @router.get("/sessions")
     async def list_sessions():
         if not state.memory_manager or not state.memory_manager.session_manager:
             return {"sessions": []}
         sessions = await state.memory_manager.session_manager.list_sessions()
-        return {"sessions": sessions}
-
-    class CreateSessionRequest(BaseModel):
-        name: str = "新对话"
+        return {
+            "sessions": [
+                {
+                    "id": s.id,
+                    "name": s.name,
+                    "message_count": s.message_count,
+                    "created_at": s.created_at.isoformat(),
+                    "updated_at": s.updated_at.isoformat(),
+                }
+                for s in sessions
+            ]
+        }
 
     @router.post("/sessions")
     async def create_session(req: CreateSessionRequest):
@@ -192,6 +260,27 @@ def create_router(state) -> APIRouter:
             raise HTTPException(404, "Session not found")
         return {"ok": True}
 
+    @router.get("/sessions/{session_id}/messages")
+    async def get_session_messages(session_id: str):
+        if not state.memory_manager or not state.memory_manager.session_manager:
+            raise HTTPException(400, "Session manager not initialized")
+        session = await state.memory_manager.session_manager.get_session(session_id)
+        if session is None:
+            raise HTTPException(404, "Session not found")
+        messages = await state.memory_manager.session_manager.load_messages(session_id)
+        return {
+            "session_id": session_id,
+            "messages": [
+                {
+                    "role": m.role.value,
+                    "content": m.content,
+                    "tool_call_id": m.tool_call_id,
+                    "reasoning_content": m.reasoning_content,
+                }
+                for m in messages
+            ],
+        }
+
     # ===== RAG Endpoints =====
 
     @router.get("/rag/documents")
@@ -211,17 +300,14 @@ def create_router(state) -> APIRouter:
         if ext not in (".txt", ".md", ".markdown"):
             raise HTTPException(400, f"Unsupported file type: {ext}. Supported: .txt, .md")
         content = await file.read()
-        tmp = Path(file.filename)
-        tmp.write_bytes(content)
+        with tempfile.NamedTemporaryFile(suffix=ext, delete=False) as tmp_file:
+            tmp_file.write(content)
+            tmp_path = Path(tmp_file.name)
         try:
-            result = await state.rag_manager.upload_document(tmp)
+            result = await state.rag_manager.upload_document(tmp_path, display_name=file.filename)
             return {"ok": True, "result": result}
         finally:
-            if tmp.exists():
-                tmp.unlink()
-
-    class DeleteDocumentRequest(BaseModel):
-        source_path: str
+            tmp_path.unlink(missing_ok=True)
 
     @router.post("/rag/documents/delete")
     async def delete_rag_document(req: DeleteDocumentRequest):

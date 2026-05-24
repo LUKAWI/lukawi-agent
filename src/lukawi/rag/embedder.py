@@ -1,8 +1,9 @@
-"""DashScope text-embedding-v3 client."""
+"""Embedding clients — DashScope text-embedding-v3 and MockEmbedder for development."""
 
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import logging
 from dataclasses import dataclass, field
 
@@ -24,7 +25,7 @@ class EmbeddingResult:
 class DashScopeEmbedder:
     """Client for DashScope text-embedding-v3 API."""
 
-    MAX_BATCH_SIZE = 25
+    MAX_BATCH_SIZE = 10
 
     def __init__(
         self,
@@ -119,3 +120,47 @@ class DashScopeEmbedder:
                 )
 
         raise EmbeddingError("All retries exhausted", cause=last_error)
+
+
+class MockEmbedder:
+    """Deterministic mock embedder for development without API key.
+
+    Generates hash-based embeddings at 1024 dimensions (matching DashScope's
+    text-embedding-v3 default) so ChromaDB can perform distance computations
+    with realistic dimensionality.
+    """
+
+    DIMENSIONS = 1024
+
+    def __init__(self, dimensions: int | None = None) -> None:
+        self.model = "mock-embedder"
+        self.dimensions = dimensions or self.DIMENSIONS
+
+    async def embed(self, texts: str | list[str]) -> list[EmbeddingResult]:
+        if isinstance(texts, str):
+            return [self._embed_single(texts)]
+        return [self._embed_single(t) for t in texts]
+
+    async def embed_single(self, text: str) -> EmbeddingResult:
+        return self._embed_single(text)
+
+    def _embed_single(self, text: str) -> EmbeddingResult:
+        vec = self._hash_to_vector(text)
+        return EmbeddingResult(
+            embedding=vec,
+            model=self.model,
+            tokens_used=len(text) // 4,
+            metadata={},
+        )
+
+    def _hash_to_vector(self, text: str) -> list[float]:
+        """Generate a deterministic unit vector from text content."""
+        h = hashlib.sha256(text.encode("utf-8")).hexdigest()
+        vec = [int(h[i : i + 2], 16) / 255.0 for i in range(0, min(len(h), self.dimensions * 2), 2)]
+        while len(vec) < self.dimensions:
+            vec.append(0.0)
+        vec = vec[: self.dimensions]
+        norm = sum(x * x for x in vec) ** 0.5
+        if norm < 1e-10:
+            return [0.0] * self.dimensions
+        return [x / norm for x in vec]

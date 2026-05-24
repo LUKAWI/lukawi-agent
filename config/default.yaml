@@ -19,11 +19,13 @@ model:
       # Temperature for response generation (0.0 - 2.0)
       temperature: 0.7
 
-    # Mock provider for testing (no API key needed)
-    mock:
-      type: mock
-      responses:
-        - "I'm a mock response for testing."
+    # DeepSeek V4 Pro — higher capability reasoning model
+    deepseek-v4-pro:
+      api_key: ${DEEPSEEK_API_KEY}
+      model: deepseek-v4-pro
+      base_url: https://api.deepseek.com
+      max_tokens: 4096
+      temperature: 0.7
 
 # Tool Configuration
 tools:
@@ -176,7 +178,7 @@ logging:
 # TUI Configuration
 tui:
   # Theme (dark, light)
-  theme: dark
+  theme: light
   # Show timestamps
   show_timestamps: true
   # Show tool execution details

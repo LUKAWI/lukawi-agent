@@ -46,12 +46,22 @@ htmlcov/
 .mypy_cache/
 .pytype/
 
+# Node
+node_modules/
+web/node_modules/
+
 # Distribution
 *.whl
 *.tar.gz
+
+# Generated docs
+docs/
 
 # Worktrees and OMO state
 .worktrees/
 .omo/
 .trae/
+
+# Runtime data
 chroma_db/
+memory_db/

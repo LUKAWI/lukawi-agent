@@ -21,7 +21,7 @@ const STATUS_ICONS = {
 };
 
 export default function ToolCallCard({ toolCall }) {
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(toolCall.collapsed !== false);
   const Icon = STATUS_ICONS[toolCall.status] || null;
   const label = STATUS_LABELS[toolCall.status] || toolCall.status;
 

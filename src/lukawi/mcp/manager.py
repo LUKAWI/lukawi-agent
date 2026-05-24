@@ -7,7 +7,7 @@ import logging
 
 from lukawi.mcp.client import MCPClient, MCPServerConfig
 from lukawi.tools.registry import ToolRegistry
-from lukawi.tools.base import ToolDefinition, ToolResult
+from lukawi.tools.base import ToolResult
 
 logger = logging.getLogger(__name__)
 

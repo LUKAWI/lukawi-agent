@@ -8,17 +8,19 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, AsyncGenerator
 
-logger = logging.getLogger(__name__)
-
 from lukawi.config.models import AgentConfig
 from lukawi.llm.base import LLMProvider, LLMResponse, Message, MessageRole
 from lukawi.tools.base import ToolResult, ToolResultStatus
 from lukawi.tools.executor import ToolExecutor
+from lukawi.tools.policy import ToolPolicy, PolicyContext
 from lukawi.tools.registry import ToolRegistry
+
+logger = logging.getLogger(__name__)
 
 
 class AgentEventType(str, Enum):
     THINKING = "thinking"
+    STREAMING_TOKEN = "streaming_token"
     TOOL_CALL = "tool_call"
     TOOL_RESULT = "tool_result"
     FINAL_ANSWER = "final_answer"
@@ -45,6 +47,7 @@ class ReActAgent:
         executor: ToolExecutor | None = None,
         config: AgentConfig | None = None,
         memory_manager: Any | None = None,
+        policy: ToolPolicy | None = None,
     ):
         self.llm = llm
         self.tools = tools
@@ -53,6 +56,7 @@ class ReActAgent:
         self._call_signatures: dict[str, int] = {}
         self._extra_system_messages: list[str] = []
         self.memory_manager = memory_manager
+        self.policy = policy
 
     def inject_system_message(self, content: str) -> None:
         """Add extra content appended after the base system prompt.
@@ -75,11 +79,11 @@ class ReActAgent:
         """
         self.llm = provider
 
-    async def _maybe_index_conversation(self) -> None:
+    async def _maybe_index_conversation(self, session_id: str | None = None) -> None:
         """Index current conversation turn into RAG if available."""
         if getattr(self, 'memory_manager', None) and hasattr(self.memory_manager, 'rag') and self.memory_manager.rag:
             try:
-                await self.memory_manager.save_conversation()
+                await self.memory_manager.save_conversation(session_id=session_id)
             except Exception as e:
                 logger.warning("Failed to index conversation: %s", e)
 
@@ -87,6 +91,7 @@ class ReActAgent:
         self,
         user_message: str,
         history: list[Message] | None = None,
+        session_id: str | None = None,
     ) -> AsyncGenerator[AgentEvent, None]:
         messages = list(history or [])
         messages.append(Message(role=MessageRole.USER, content=user_message))
@@ -96,7 +101,7 @@ class ReActAgent:
             system_content += "\n\n" + "\n\n".join(self._extra_system_messages)
 
         if self.memory_manager is not None:
-            memories = await self.memory_manager.recall(query=user_message, limit=5)
+            memories = await self.memory_manager.recall(query=user_message, limit=5, session_id=session_id)
             if memories:
                 memory_lines = ["## 相关记忆"]
                 for m in memories:
@@ -112,13 +117,44 @@ class ReActAgent:
             try:
                 yield AgentEvent(AgentEventType.THINKING, {"step": step})
 
-                response = await self._think(messages)
+                tool_schemas = self.tools.list_tools()
+                tools_arg = tool_schemas if tool_schemas else None
+
+                full_content = ""
+                final_tool_calls = None
+                finish_reason = None
+                reasoning = None
+
+                async for chunk in self.llm.chat_stream(
+                    messages=messages,
+                    tools=tools_arg,
+                ):
+                    if chunk.content:
+                        full_content += chunk.content
+                        yield AgentEvent(AgentEventType.STREAMING_TOKEN, {
+                            "content": chunk.content,
+                        })
+                    if chunk.tool_calls is not None:
+                        final_tool_calls = chunk.tool_calls
+                    if chunk.finish_reason:
+                        finish_reason = chunk.finish_reason
+                    if chunk.reasoning_content:
+                        if reasoning is None:
+                            reasoning = ""
+                        reasoning += chunk.reasoning_content
+
+                response = LLMResponse(
+                    content=full_content.strip() if full_content else None,
+                    tool_calls=final_tool_calls if final_tool_calls else None,
+                    finish_reason=finish_reason or "stop",
+                    reasoning_content=reasoning,
+                )
 
                 if not response.tool_calls:
                     yield AgentEvent(AgentEventType.FINAL_ANSWER, {
-                        "content": response.content
+                        "content": response.content or ""
                     })
-                    await self._maybe_index_conversation()
+                    await self._maybe_index_conversation(session_id)
                     return
 
                 results: list[tuple[Any, ToolResult]] = []
@@ -183,6 +219,9 @@ class ReActAgent:
         )
 
     async def _act(self, tool_name: str, tool_params: dict[str, Any]) -> ToolResult:
+        if self.policy and not self.policy.is_allowed(tool_name, PolicyContext()):
+            return ToolResult.denied(f"Tool '{tool_name}' denied by policy")
+
         if self.config.loop_detection:
             signature = f"{tool_name}:{json.dumps(tool_params, sort_keys=True)}"
             count = self._call_signatures.get(signature, 0) + 1

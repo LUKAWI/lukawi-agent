@@ -5,7 +5,6 @@ from __future__ import annotations
 import asyncio
 import logging
 from dataclasses import dataclass
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 from lukawi.config.settings import load_config
@@ -16,10 +15,10 @@ from lukawi.llm.mock import MockProvider
 from lukawi.agent.core import ReActAgent
 from lukawi.tools.registry import ToolRegistry
 from lukawi.tools.executor import ToolExecutor
+from lukawi.tools.policy import ToolPolicy
 from lukawi.tools.builtin.web_fetch import register_web_fetch
 from lukawi.tools.builtin.file_ops import register_file_ops
 from lukawi.tools.builtin.shell import register_shell
-from lukawi.tools.builtin.memory_tools import register_memory_tools
 from lukawi.config.user_config import load_mcp_servers, merge_mcp_configs, save_mcp_servers
 from lukawi.utils.logging import setup_logging
 from lukawi.mcp.client import MCPServerConfig as MCPClientConfig
@@ -105,17 +104,23 @@ def create_agent_context(
 
     # === RAG initialization ===
     rag_manager = None
-    if config.rag.enabled and config.rag.dashscope.api_key:
-        from lukawi.rag.embedder import DashScopeEmbedder
+    if config.rag.enabled:
+        from lukawi.rag.embedder import DashScopeEmbedder, MockEmbedder
         from lukawi.rag.store import VectorStore
         from lukawi.rag.manager import RAGManager
 
-        embedder = DashScopeEmbedder(
-            api_key=config.rag.dashscope.api_key,
-            model=config.rag.dashscope.model,
-            dimensions=config.rag.dashscope.dimensions,
-        )
-        store = VectorStore(persist_dir=config.rag.chroma_db_dir)
+        if config.rag.dashscope.api_key:
+            embedder = DashScopeEmbedder(
+                api_key=config.rag.dashscope.api_key,
+                model=config.rag.dashscope.model,
+                dimensions=config.rag.dashscope.dimensions,
+            )
+            logger.info("RAG using DashScope embedder")
+        else:
+            embedder = MockEmbedder()
+            logger.info("RAG using MockEmbedder (no DASHSCOPE_API_KEY set, %d dims)", embedder.dimensions)
+
+        store = VectorStore(persist_dir=config.rag.chroma_db_dir, embedder=embedder)
         rag_manager = RAGManager(
             embedder=embedder,
             store=store,
@@ -124,8 +129,6 @@ def create_agent_context(
         )
         asyncio.run(rag_manager.initialize())
         logger.info("RAG initialized with ChromaDB at %s", config.rag.chroma_db_dir)
-    elif config.rag.enabled:
-        logger.warning("RAG enabled but no DASHSCOPE_API_KEY set — RAG disabled")
 
     memory_manager = None
     if config.memory.enabled:
@@ -175,11 +178,10 @@ def create_agent_context(
         executor=ToolExecutor(),
         config=agent_config,
         memory_manager=memory_manager,
+        policy=ToolPolicy(config.tools),
     )
 
-    if mcp_manager and all_configs:
-        asyncio.run(mcp_manager.connect_all(all_configs))
-        asyncio.run(mcp_manager.register_tools(tool_registry))
+    # MCP connection deferred to caller (webui: FastAPI startup, repl: on connect)
 
     return AgentContext(
         config=config,
@@ -200,4 +202,7 @@ def cleanup_context(ctx: AgentContext) -> None:
     if ctx.rag_manager:
         asyncio.run(ctx.rag_manager.close())
     if ctx.mcp_manager.connected_count > 0:
-        asyncio.run(ctx.mcp_manager.disconnect_all())
+        try:
+            asyncio.run(ctx.mcp_manager.disconnect_all())
+        except Exception:
+            pass

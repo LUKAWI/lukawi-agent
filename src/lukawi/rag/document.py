@@ -52,7 +52,7 @@ class DocumentLoader:
     # Public API
     # ------------------------------------------------------------------
 
-    def load_file(self, file_path: str | Path) -> list[DocumentChunk]:
+    def load_file(self, file_path: str | Path, source_path: str | None = None) -> list[DocumentChunk]:
         """Load a single file and split into chunks.
 
         Raises
@@ -68,7 +68,7 @@ class DocumentLoader:
             raise DocumentLoadError(f"路径不是文件: {path}")
 
         text = self._read_file(path)
-        return self._split_text(text, source_path=str(path))
+        return self._split_text(text, source_path=source_path or str(path))
 
     def load_directory(self, dir_path: str | Path) -> list[DocumentChunk]:
         """Load all supported files from a directory.

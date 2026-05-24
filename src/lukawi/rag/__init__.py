@@ -1,9 +1,9 @@
-"""RAG module — Retrieval-Augmented Generation with DashScope embeddings and ChromaDB."""
+"""RAG module — Retrieval-Augmented Generation with embeddings and ChromaDB."""
 
 from __future__ import annotations
 
 from lukawi.rag.document import DocumentLoader  # noqa: E402
-from lukawi.rag.embedder import DashScopeEmbedder, EmbeddingResult  # noqa: E402
+from lukawi.rag.embedder import DashScopeEmbedder, EmbeddingResult, MockEmbedder  # noqa: E402
 from lukawi.rag.exceptions import (
     DocumentLoadError,
     EmbeddingError,
@@ -19,6 +19,7 @@ __all__ = [
     "VectorStore",
     "DocumentLoader",
     "DashScopeEmbedder",
+    "MockEmbedder",
     "Retriever",
     "DocumentChunk",
     "SearchResult",

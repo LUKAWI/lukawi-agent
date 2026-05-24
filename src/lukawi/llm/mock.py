@@ -70,19 +70,24 @@ class MockProvider(LLMProvider):
     ) -> AsyncGenerator[LLMChunk, None]:
         response = await self.chat(messages, tools, temperature, max_tokens)
 
+        reasoning_yielded = False
+
         if response.content:
             words = response.content.split()
             for i, word in enumerate(words):
                 yield LLMChunk(
                     content=word + (" " if i < len(words) - 1 else ""),
-                    finish_reason="stop" if i == len(words) - 1 else None,
-                    reasoning_content=response.reasoning_content if i == 0 else None,
+                    finish_reason="stop" if i == len(words) - 1 and not response.tool_calls else None,
+                    reasoning_content=response.reasoning_content if i == 0 and not reasoning_yielded else None,
                 )
-        elif response.tool_calls:
+                if i == 0 and response.reasoning_content:
+                    reasoning_yielded = True
+
+        if response.tool_calls:
             yield LLMChunk(
                 tool_calls=response.tool_calls,
                 finish_reason="tool_calls",
-                reasoning_content=response.reasoning_content,
+                reasoning_content=response.reasoning_content if not reasoning_yielded else None,
             )
 
     def get_model_info(self) -> ModelInfo:

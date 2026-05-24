@@ -17,11 +17,18 @@ export function useSSE() {
     const assistantId = crypto.randomUUID();
     dispatch({ type: 'START_STREAMING', payload: { id: assistantId } });
 
+    let sessionCaptured = false;
+
     abortRef.current = api.chatStream(message, {
+      sessionId: state.currentSessionId,
       onEvent(eventType, data) {
         switch (eventType) {
           case 'thinking':
             dispatch({ type: 'APPEND_TOKEN', payload: '\n🧐 Thinking...' });
+            if (!sessionCaptured && data.session_id) {
+              dispatch({ type: 'SET_CURRENT_SESSION', payload: data.session_id });
+              sessionCaptured = true;
+            }
             break;
           case 'tool_call':
             dispatch({ type: 'APPEND_TOKEN', payload: `\n🔧 Using tool: **${data.tool}**` });
@@ -51,7 +58,7 @@ export function useSSE() {
         dispatch({ type: 'FINISH_STREAMING' });
       },
     });
-  }, [dispatch]);
+  }, [dispatch, state.currentSessionId]);
 
   const clearMessages = useCallback(() => {
     if (abortRef.current) abortRef.current.abort();

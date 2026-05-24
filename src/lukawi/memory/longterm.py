@@ -24,6 +24,7 @@ class Memory:
     agent_id: str
     created_at: datetime
     updated_at: datetime
+    score: float | None = None
 
 
 class LongTermMemory:
@@ -78,7 +79,7 @@ class LongTermMemory:
             raise RuntimeError("Database not initialized")
 
         memory_id = str(uuid.uuid4())
-        now = datetime.now(UTC).isoformat()
+        now = datetime.now(UTC).replace(tzinfo=None).isoformat()
 
         await self._db.execute(
             """
@@ -157,7 +158,7 @@ class LongTermMemory:
         if not self._db:
             raise RuntimeError("Database not initialized")
 
-        now = datetime.now(UTC).isoformat()
+        now = datetime.now(UTC).replace(tzinfo=None).isoformat()
 
         cursor = await self._db.execute(
             "UPDATE memories SET content = ?, updated_at = ? WHERE id = ?",

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import uuid
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -9,6 +10,27 @@ from typing import Any
 
 import chromadb
 from chromadb.config import Settings
+from chromadb.api.types import EmbeddingFunction, Embeddings
+
+
+class _DummyEmbeddingFunction(EmbeddingFunction):
+    """No-op embedding function that satisfies ChromaDB dimension validation.
+
+    Used when an external embedder (DashScope / Mock) is injected into
+    VectorStore.  ChromaDB never calls this because we always pass
+    embeddings explicitly via ``col.add(embeddings=...)`` and
+    ``col.query(query_embeddings=...)``.
+    """
+
+    def __init__(self, dimensions: int) -> None:
+        self._dimensions = dimensions
+
+    def __call__(self, texts: list[str]) -> Embeddings:
+        return [[0.0] * self._dimensions for _ in texts]
+
+    @staticmethod
+    def name() -> str:
+        return "lukawi-external"
 
 
 @dataclass
@@ -33,13 +55,20 @@ class SearchResult:
 
 
 class VectorStore:
-    """ChromaDB-backed vector store for documents and conversations."""
+    """ChromaDB-backed vector store for documents and conversations.
 
-    def __init__(self, persist_dir: str | Path) -> None:
+    When *embedder* is provided, all add and search operations use it
+    to generate embeddings explicitly, bypassing ChromaDB's built-in
+    ONNX embedder.  Without it, ChromaDB's default embedding is used.
+    """
+
+    def __init__(self, persist_dir: str | Path, embedder=None) -> None:
         self._persist_dir = Path(persist_dir)
+        self._embedder = embedder
         self._client: chromadb.PersistentClient | None = None
         self._collection_docs: chromadb.Collection | None = None
         self._collection_conv: chromadb.Collection | None = None
+        self._initialized: bool = False
 
     @property
     def collection_docs(self) -> chromadb.Collection | None:
@@ -52,23 +81,81 @@ class VectorStore:
         return self._collection_conv
 
     # ------------------------------------------------------------------
+    # Helpers — run sync ChromaDB calls off the event loop
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    async def _run_sync(call, *args, **kwargs):
+        """Run a synchronous ChromaDB call in a thread to avoid blocking the event loop.
+
+        ChromaDB exceptions are caught and re-raised as StorageError with context.
+        """
+        try:
+            return await asyncio.to_thread(call, *args, **kwargs)
+        except Exception as e:
+            from lukawi.rag.exceptions import RAGError
+
+            if not isinstance(e, RAGError):
+                raise RuntimeError(f"ChromaDB operation failed: {e}") from e
+            raise
+
+    # ------------------------------------------------------------------
     # Lifecycle
     # ------------------------------------------------------------------
 
     async def initialize(self) -> None:
         """Create the persistent client and ensure both collections exist."""
-        self._client = chromadb.PersistentClient(
-            path=str(self._persist_dir),
-            settings=Settings(anonymized_telemetry=False),
-        )
-        self._collection_docs = self._client.get_or_create_collection("documents")
-        self._collection_conv = self._client.get_or_create_collection("conversations")
+        if self._initialized:
+            return
+
+        embedding_function = None
+        if self._embedder:
+            emb_test = await self._embedder.embed("init")
+            dims = len(emb_test[0].embedding)
+            embedding_function = _DummyEmbeddingFunction(dimensions=dims)
+
+        ef = embedding_function
+
+        def _init() -> None:
+            client = chromadb.PersistentClient(
+                path=str(self._persist_dir),
+                settings=Settings(anonymized_telemetry=False),
+            )
+            self._client = client
+
+            for name in ("documents", "conversations"):
+                col = self._get_or_init_collection(client, name, ef)
+                if name == "documents":
+                    self._collection_docs = col
+                else:
+                    self._collection_conv = col
+
+        await self._run_sync(_init)
+        self._initialized = True
+
+    @staticmethod
+    def _get_or_init_collection(client, name, embedding_function=None):
+        """Get or create a ChromaDB collection, handling external embedder migration."""
+        if embedding_function is None:
+            return client.get_or_create_collection(name)
+
+        try:
+            return client.get_collection(name, embedding_function=embedding_function)
+        except Exception:
+            pass
+
+        try:
+            return client.create_collection(name, embedding_function=embedding_function)
+        except Exception:
+            client.delete_collection(name)
+            return client.create_collection(name, embedding_function=embedding_function)
 
     async def close(self) -> None:
         """Release the ChromaDB client and reset collection references."""
         self._collection_docs = None
         self._collection_conv = None
         self._client = None
+        self._initialized = False
 
     # ------------------------------------------------------------------
     # Documents
@@ -89,19 +176,51 @@ class VectorStore:
             }
             for c in chunks
         ]
-        self._collection_docs.add(ids=ids, documents=documents, metadatas=metadatas)
+        col = self._collection_docs
+
+        if self._embedder:
+            emb_results = await self._embedder.embed(documents)
+            embeddings = [r.embedding for r in emb_results]
+
+            def _add():
+                col.add(ids=ids, embeddings=embeddings, documents=documents, metadatas=metadatas)
+
+            await self._run_sync(_add)
+        else:
+
+            def _add():
+                col.add(ids=ids, documents=documents, metadatas=metadatas)
+
+            await self._run_sync(_add)
         return ids
 
     async def search_documents(
-        self, query_text: str, limit: int = 5
+        self, query_text: str, limit: int = 5, source_path: str | None = None
     ) -> list[SearchResult]:
-        """Semantic search over the document collection."""
+        """Semantic search over the document collection, optionally scoped to *source_path*."""
         if self._collection_docs is None:
             return []
 
-        results = self._collection_docs.query(
-            query_texts=[query_text], n_results=limit
-        )
+        col = self._collection_docs
+
+        if self._embedder:
+            emb_results = await self._embedder.embed(query_text)
+            query_embeddings = [emb_results[0].embedding]
+
+            def _query():
+                kwargs: dict = {"query_embeddings": query_embeddings, "n_results": limit}
+                if source_path:
+                    kwargs["where"] = {"source_path": source_path}
+                return col.query(**kwargs)
+        else:
+
+            def _query():
+                kwargs: dict = {"query_texts": [query_text], "n_results": limit}
+                if source_path:
+                    kwargs["where"] = {"source_path": source_path}
+                return col.query(**kwargs)
+
+        results = await self._run_sync(_query)
         return self._parse_results(results)
 
     async def delete_document(self, source_path: str) -> int:
@@ -109,16 +228,17 @@ class VectorStore:
         if self._collection_docs is None:
             return 0
 
-        existing = self._collection_docs.get(
-            where={"source_path": source_path},
-            include=[],
-        )
-        chunk_ids: list[str] = existing["ids"]  # type: ignore[index]
-        if not chunk_ids:
-            return 0
+        col = self._collection_docs
 
-        self._collection_docs.delete(ids=chunk_ids)
-        return len(chunk_ids)
+        def _delete():
+            existing = col.get(where={"source_path": source_path}, include=[])
+            chunk_ids: list[str] = existing["ids"]
+            if not chunk_ids:
+                return 0
+            col.delete(ids=chunk_ids)
+            return len(chunk_ids)
+
+        return await self._run_sync(_delete)
 
     # ------------------------------------------------------------------
     # Conversations
@@ -132,11 +252,31 @@ class VectorStore:
             return ""
 
         conv_id = str(uuid.uuid4())
-        self._collection_conv.add(
-            ids=[conv_id],
-            documents=[content],
-            metadatas=[metadata] if metadata else None,
-        )
+        col = self._collection_conv
+
+        if self._embedder:
+            emb_results = await self._embedder.embed(content)
+            embedding = emb_results[0].embedding
+
+            def _add():
+                col.add(
+                    ids=[conv_id],
+                    embeddings=[embedding],
+                    documents=[content],
+                    metadatas=[metadata] if metadata else None,
+                )
+
+            await self._run_sync(_add)
+        else:
+
+            def _add():
+                col.add(
+                    ids=[conv_id],
+                    documents=[content],
+                    metadatas=[metadata] if metadata else None,
+                )
+
+            await self._run_sync(_add)
         return conv_id
 
     async def search_conversations(
@@ -144,16 +284,39 @@ class VectorStore:
         query_text: str,
         user_id: str,
         limit: int = 5,
+        session_id: str | None = None,
     ) -> list[SearchResult]:
-        """Search conversations scoped to *user_id*."""
+        """Search conversations scoped to *user_id* and optionally *session_id*."""
         if self._collection_conv is None:
             return []
 
-        results = self._collection_conv.query(
-            query_texts=[query_text],
-            n_results=limit,
-            where={"user_id": user_id},
-        )
+        col = self._collection_conv
+
+        if session_id:
+            where: dict = {"$and": [{"user_id": user_id}, {"session_id": session_id}]}
+        else:
+            where: dict = {"user_id": user_id}
+
+        if self._embedder:
+            emb_results = await self._embedder.embed(query_text)
+            query_embeddings = [emb_results[0].embedding]
+
+            def _query():
+                return col.query(
+                    query_embeddings=query_embeddings,
+                    n_results=limit,
+                    where=where,
+                )
+        else:
+
+            def _query():
+                return col.query(
+                    query_texts=[query_text],
+                    n_results=limit,
+                    where=where,
+                )
+
+        results = await self._run_sync(_query)
         return self._parse_results(results)
 
     async def delete_conversation(self, conv_id: str) -> bool:
@@ -161,12 +324,50 @@ class VectorStore:
         if self._collection_conv is None:
             return False
 
-        existing = self._collection_conv.get(ids=[conv_id], include=[])
-        if not existing["ids"]:  # type: ignore[index]
-            return False
+        col = self._collection_conv
 
-        self._collection_conv.delete(ids=[conv_id])
-        return True
+        def _delete():
+            existing = col.get(ids=[conv_id], include=[])
+            if not existing["ids"]:
+                return False
+            col.delete(ids=[conv_id])
+            return True
+
+        return await self._run_sync(_delete)
+
+    async def clear_conversations(self) -> int:
+        """Delete ALL conversation entries.  Returns the count removed."""
+        if self._collection_conv is None:
+            return 0
+
+        col = self._collection_conv
+
+        def _clear():
+            existing = col.get(include=[])
+            all_ids = existing["ids"]
+            if not all_ids:
+                return 0
+            col.delete(ids=all_ids)
+            return len(all_ids)
+
+        return await self._run_sync(_clear)
+
+    async def clear_conversations_by_session(self, session_id: str) -> int:
+        """Delete conversation entries scoped to *session_id*. Returns count removed."""
+        if self._collection_conv is None:
+            return 0
+
+        col = self._collection_conv
+
+        def _clear():
+            existing = col.get(where={"session_id": session_id}, include=[])
+            chunk_ids = existing["ids"]
+            if not chunk_ids:
+                return 0
+            col.delete(ids=chunk_ids)
+            return len(chunk_ids)
+
+        return await self._run_sync(_clear)
 
     # ------------------------------------------------------------------
     # Helpers

@@ -13,13 +13,14 @@ const initialState = {
   mcpServers: [],
   mcpConnected: 0,
   mcpTotal: 0,
-  theme: 'dark',
-  sidebarVisible: true,
+  theme: 'light',
+  sidebarVisible: false,
   statusTokens: 0,
   sessions: [],
   currentSessionId: null,
   ragDocuments: [],
   ragEnabled: false,
+  selectedKnowledgeSources: [],
 };
 
 function reducer(state, action) {
@@ -27,26 +28,43 @@ function reducer(state, action) {
     case 'ADD_USER_MESSAGE':
       return { ...state, messages: [...state.messages, action.payload] };
     case 'START_STREAMING': {
-      const msg = { id: action.payload.id, role: 'assistant', content: '', toolCalls: [], timestamp: Date.now() };
+      const msg = { id: action.payload.id, role: 'assistant', blocks: [], timestamp: Date.now() };
       return { ...state, messages: [...state.messages, msg], streamingId: msg.id, isLoading: true };
     }
     case 'APPEND_TOKEN': {
       if (!state.streamingId) return state;
       return {
         ...state,
-        messages: state.messages.map(m =>
-          m.id === state.streamingId ? { ...m, content: m.content + action.payload } : m
-        ),
+        messages: state.messages.map(m => {
+          if (m.id !== state.streamingId) return m;
+          const blocks = [...m.blocks];
+          const last = blocks[blocks.length - 1];
+          if (last && last.type === 'text') {
+            blocks[blocks.length - 1] = { ...last, content: last.content + action.payload };
+          } else {
+            blocks.push({ type: 'text', content: action.payload });
+          }
+          return { ...m, blocks };
+        }),
       };
     }
     case 'SET_TOOL_CALL': {
       if (!state.streamingId) return state;
-      const tc = { id: crypto.randomUUID(), tool: action.payload.tool, params: action.payload.params, status: 'running', result: '' };
+      const tc = {
+        type: 'tool',
+        id: crypto.randomUUID(),
+        tool: action.payload.tool,
+        params: action.payload.params,
+        status: 'running',
+        result: '',
+        collapsed: true,
+      };
       return {
         ...state,
-        messages: state.messages.map(m =>
-          m.id === state.streamingId ? { ...m, toolCalls: [...m.toolCalls, tc] } : m
-        ),
+        messages: state.messages.map(m => {
+          if (m.id !== state.streamingId) return m;
+          return { ...m, blocks: [...m.blocks, tc] };
+        }),
       };
     }
     case 'UPDATE_TOOL_RESULT': {
@@ -57,10 +75,19 @@ function reducer(state, action) {
       return {
         ...state,
         messages: state.messages.map(m => {
-          if (m.id !== state.streamingId || m.toolCalls.length === 0) return m;
-          const tcs = [...m.toolCalls];
-          tcs[tcs.length - 1] = { ...tcs[tcs.length - 1], status: action.payload.status || 'success', result: resultStr };
-          return { ...m, toolCalls: tcs };
+          if (m.id !== state.streamingId) return m;
+          const blocks = [...m.blocks];
+          for (let i = blocks.length - 1; i >= 0; i--) {
+            if (blocks[i].type === 'tool' && blocks[i].status === 'running') {
+              blocks[i] = {
+                ...blocks[i],
+                status: action.payload.status === 'success' ? 'success' : 'error',
+                result: resultStr,
+              };
+              break;
+            }
+          }
+          return { ...m, blocks };
         }),
       };
     }
@@ -76,6 +103,14 @@ function reducer(state, action) {
       return { ...state, skills: action.payload };
     case 'SET_ACTIVE_SKILLS':
       return { ...state, activeSkills: action.payload };
+    case 'TOGGLE_ACTIVE_SKILL': {
+      const name = action.payload;
+      const idx = state.activeSkills.indexOf(name);
+      if (idx >= 0) {
+        return { ...state, activeSkills: state.activeSkills.filter(n => n !== name) };
+      }
+      return { ...state, activeSkills: [...state.activeSkills, name] };
+    }
     case 'SET_MCP':
       return { ...state, mcpServers: action.payload.servers, mcpConnected: action.payload.connected, mcpTotal: action.payload.total };
     case 'SET_THEME':
@@ -83,7 +118,9 @@ function reducer(state, action) {
     case 'TOGGLE_SIDEBAR':
       return { ...state, sidebarVisible: !state.sidebarVisible };
     case 'CLEAR_MESSAGES':
-      return { ...state, messages: [], streamingId: null };
+      return { ...state, messages: [], streamingId: null, currentSessionId: null };
+    case 'SET_MESSAGES':
+      return { ...state, messages: action.payload, streamingId: null };
     case 'SET_STATUS':
       return { ...state, ...action.payload };
     case 'SET_SESSIONS':
@@ -94,6 +131,13 @@ function reducer(state, action) {
       return { ...state, ragDocuments: action.payload.documents, ragEnabled: action.payload.enabled };
     case 'SET_RAG_ENABLED':
       return { ...state, ragEnabled: action.payload };
+    case 'TOGGLE_KNOWLEDGE_SOURCE': {
+      const src = action.payload;
+      const selected = state.selectedKnowledgeSources.includes(src)
+        ? state.selectedKnowledgeSources.filter(s => s !== src)
+        : [...state.selectedKnowledgeSources, src];
+      return { ...state, selectedKnowledgeSources: selected };
+    }
     default:
       return state;
   }

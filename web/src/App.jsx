@@ -3,7 +3,7 @@ import { AppProvider, useApp } from './context/AppContext';
 import Header from './components/Header';
 import Sidebar from './components/Sidebar';
 import ChatPanel from './components/ChatPanel';
-import StatusBar from './components/StatusBar';
+
 import { api } from './api';
 import './App.css';
 
@@ -13,7 +13,7 @@ function AppContent() {
   useEffect(() => {
     // Load initial state
     Promise.all([
-      api.getConfig().catch(() => ({ theme: 'dark' })),
+      api.getConfig().catch(() => ({ theme: 'light' })),
       api.getStatus().catch(() => ({})),
     ]).then(([cfg, status]) => {
       if (cfg.theme) dispatch({ type: 'SET_THEME', payload: cfg.theme });
@@ -53,26 +53,15 @@ function AppContent() {
   return (
     <>
       <Header
-        currentModel={state.currentModel}
         theme={state.theme}
         onToggleSidebar={handleToggleSidebar}
         onToggleTheme={handleToggleTheme}
-        models={state.models}
-        onModelChange={(name) => {
-          api.useModel(name).then(() => dispatch({ type: 'SET_CURRENT_MODEL', payload: name })).catch(console.error);
-        }}
       />
       <div className="main-content">
         <Sidebar />
         <ChatPanel />
       </div>
-      <StatusBar
-        model={state.currentModel}
-        tokens={0}
-        mcpConnected={state.mcpConnected}
-        mcpTotal={state.mcpTotal}
-        activeSkills={state.activeSkills.length}
-      />
+
     </>
   );
 }

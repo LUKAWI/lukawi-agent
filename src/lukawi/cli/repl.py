@@ -1,8 +1,6 @@
 from __future__ import annotations
 
 import asyncio
-import sys
-import signal
 
 from lukawi.cli import create_agent_context, cleanup_context
 from lukawi.agent.core import AgentEventType
@@ -48,6 +46,10 @@ def run_repl(
                     rprint(f"[red]Error: {error}[/red]")
 
         async def _repl_loop() -> None:
+            if ctx.mcp_manager and ctx.mcp_configs:
+                await ctx.mcp_manager.connect_all(ctx.mcp_configs)
+                await ctx.mcp_manager.register_tools(ctx.tool_registry)
+
             while True:
                 try:
                     text = Prompt.ask("[bold cyan]>>>[/bold cyan]")

@@ -1,193 +1,96 @@
-# Lukawi Agent Framework
+# Lukawi Agent
 
-> A lightweight AI Agent framework with ReAct loop, tool calling, and memory
-
-[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+A lightweight, extensible AI Agent framework with ReAct loop, tool calling, memory, and knowledge base.
 
 ## Features
 
-- 🤖 **ReAct Loop**: Think → Act → Observe cycle for complex reasoning
-- 🔧 **Tool Calling**: Extensible tool system with policy pipeline
-- 💾 **Memory System**: Session and long-term memory with SQLite
-- 🖥️ **TUI Interface**: Beautiful terminal UI with Textual
-- 🔌 **DeepSeek Integration**: Native support for DeepSeek API
-- 🔀 **Model Switching**: Easy model switching at runtime
-- 🛡️ **Tool Policies**: Fine-grained tool access control
-- 🪝 **Hook System**: Pre/post execution hooks for auditing
+- **ReAct Loop Agent** — reasoning + acting with automatic tool calling
+- **Streaming Chat** — token-by-token real-time output in WebUI
+- **Tool System** — built-in tools: web fetch, file operations, shell commands
+- **Extensible Skills** — drop `SKILL.md` files to teach the agent new abilities
+- **MCP Protocol** — connect external tool servers (sequential thinking, code context, etc.)
+- **Memory** — session-based short-term + persistent long-term memory with search
+- **RAG Knowledge Base** — upload documents, semantic search via DashScope embeddings
+- **WebUI** — React-based chat interface with model switching, session management
+- **TUI** — terminal-based interactive REPL with Rich formatting
 
 ## Quick Start
 
-### 一键安装（推荐）
+### 1. Install
 
 ```bash
-# 下载后，双击运行 install.bat
-# 或者命令行运行：
-.\install.bat
+pip install lukawi
 ```
 
-`install.bat` 会自动完成安装 + PATH 配置，**重启终端后直接可用**。
-
-### 手动安装
+### 2. Initialize
 
 ```bash
-pip install -e .
+lukawi-init
 ```
 
-如果 `lukawi` 找不到，用 `python -m lukawi.main` 代替。
+This interactive wizard will ask for:
+- **DeepSeek API Key** (required for LLM)
+- **DashScope API Key** (optional, for RAG / knowledge base)
+- **MCP Servers** (optional, for extra tools)
 
-### 启动
+### 3. Launch
 
 ```bash
-# 零配置体验（Mock 模式，无需 API Key）
-lukawi --mock
+# Web UI (recommended)
+lukawi webui
 
-# 完整模式（需要 DeepSeek API Key）
-$env:DEEPSEEK_API_KEY="sk-你的key"
+# Terminal REPL
 lukawi
 ```
 
-### 获取 DeepSeek API Key
+Open http://localhost:50109 in your browser.
 
-去 [platform.deepseek.com](https://platform.deepseek.com) 注册即可获得。
-    deepseek:
-      api_key: ${DEEPSEEK_API_KEY}
-      model: deepseek-v4-flash
+### 4. Add Skills (optional)
+
+Drop `SKILL.md` files into the `skills/` directory:
+
 ```
-
-### Usage
-
-```bash
-# Start the TUI
-lukawi
-
-# Or with custom config
-lukawi --config path/to/config.yaml
-
-# Use a specific model
-lukawi --model deepseek-pro
+skills/
+├── my-skill/
+│   └── SKILL.md
 ```
-
-## TUI Commands
-
-| Command | Description |
-|---------|-------------|
-| `/help` | Show help message |
-| `/clear` | Clear chat history |
-| `/models` | List available models |
-| `/models use <name>` | Switch to a model |
-| `/models info` | Show current model info |
-| `/memory` | Show memory stats |
-| `/memory search <query>` | Search long-term memory |
-| `/quit` | Exit the application |
 
 ## Configuration
 
-### Model Configuration
+All configuration is read from `config/default.yaml`. Override via environment variables or a `.env` file:
 
-```yaml
-model:
-  default: deepseek
-  providers:
-    deepseek:
-      api_key: ${DEEPSEEK_API_KEY}
-      model: deepseek-v4-flash
-      base_url: https://api.deepseek.com
-      max_tokens: 4096
-      temperature: 0.7
-    mock:
-      # Mock provider for testing
-      type: mock
+```env
+DEEPSEEK_API_KEY=sk-...
+DEEPSEEK_BASE_URL=https://api.deepseek.com/v1
+DASHSCOPE_API_KEY=sk-...
 ```
 
-### Tool Policy
+MCP servers are configured in `~/.lukawi/mcp-servers.json`.
 
-```yaml
-tools:
-  default_profile: default
-  profiles:
-    default:
-      allowed_tools: ["*"]
-      denied_tools: []
-    restricted:
-      allowed_tools: ["web_fetch", "read_file"]
-      denied_tools: ["exec_command"]
-```
+## Keyboard Shortcuts
 
-### Memory Configuration
-
-```yaml
-memory:
-  enabled: true
-  db_path: memory.db
-  session_max_messages: 100
-  longterm_enabled: true
-```
-
-## Architecture
-
-```
-┌─────────────────────────────────────────────────────────┐
-│                    TUI Layer (Textual)                   │
-└─────────────────────────────────────────────────────────┘
-                            │
-                            ▼
-┌─────────────────────────────────────────────────────────┐
-│                  Agent Core (ReAct Loop)                 │
-│              Think → Act → Observe → Repeat             │
-└─────────────────────────────────────────────────────────┘
-         │                    │                    │
-         ▼                    ▼                    ▼
-┌───────────────┐  ┌───────────────┐  ┌───────────────────┐
-│   LLM Layer   │  │  Tool System  │  │   Memory System   │
-│   (DeepSeek)  │  │   (Registry)  │  │   (SQLite)        │
-└───────────────┘  └───────────────┘  └───────────────────┘
-```
+| Shortcut | Action |
+|----------|--------|
+| `Ctrl+B` | Toggle sidebar |
+| `Ctrl+L` | Clear chat |
+| `Enter` | Send message |
+| `Shift` + `Enter` | New line |
+| `/` | Command mode |
 
 ## Development
 
-### Setup
-
 ```bash
-# Clone the repository
-git clone https://github.com/yourusername/lukawi-agent.git
-cd lukawi-agent
-
-# Create virtual environment
-python -m venv .venv
-.venv\Scripts\activate  # Windows
-# source .venv/bin/activate  # Linux/Mac
-
-# Install dependencies
+git clone https://github.com/lukawi-team/lukawi.git
+cd lukawi
 pip install -e ".[dev]"
-```
 
-### Running Tests
-
-```bash
-# Run all tests
+# Run tests
 pytest
 
-# Run with coverage
-pytest --cov=lukawi
-
-# Run specific tests
-pytest tests/test_tools/
-```
-
-### Code Quality
-
-```bash
-# Lint
-ruff check .
-
-# Format
-ruff format .
-
-# Type check
-mypy src/
+# Build frontend
+cd web && npm install && npm run build
 ```
 
 ## License
 
-MIT License - see [LICENSE](LICENSE) for details.
+MIT

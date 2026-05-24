@@ -25,6 +25,7 @@ class ServerState:
     config: AppConfig | None = None
     tui_config: TUIConfig | None = None
     active_skills: dict[str, str] = field(default_factory=dict)
+    selected_skills: set[str] = field(default_factory=set)
     memory_manager: MemoryManager | None = None
     rag_manager: RAGManager | None = None
 

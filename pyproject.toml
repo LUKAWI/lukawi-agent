@@ -12,8 +12,8 @@ requires-python = ">=3.10"
 authors = [
     {name = "Lukawi Team"},
 ]
+urls = { repository = "https://github.com/lukawi-team/lukawi" }
 dependencies = [
-    "textual>=0.40.0",
     "rich>=13.0.0",
     "httpx>=0.25.0",
     "openai>=1.0.0",
@@ -38,13 +38,21 @@ dev = [
 ]
 
 [project.scripts]
-lukawi = "lukawi.cli:main"
+lukawi = "lukawi.main:main"
+lukawi-init = "lukawi.cli.init:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
 
 [tool.setuptools.package-data]
-lukawi = ["py.typed", "data/*.yaml", "data/*.yml"]
+lukawi = [
+    "py.typed",
+    "data/*.yaml",
+    "data/*.yml",
+    "server/static/index.html",
+    "server/static/assets/*.js",
+    "server/static/assets/*.css",
+]
 
 [tool.setuptools]
 include-package-data = true

@@ -12,7 +12,6 @@ from lukawi.cli.repl import run_repl
 from lukawi.cli.skills import run_skills
 from lukawi.cli.status import run_status
 from lukawi.cli.webui import run_webui
-from lukawi.tui.app import run_tui
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
@@ -29,7 +28,6 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 
     subparsers = parser.add_subparsers(dest="command")
 
-    subparsers.add_parser("tui", help="Launch terminal UI")
     subparsers.add_parser("webui", help="Launch web UI")
 
     chat_parser = subparsers.add_parser("chat", help="One-shot chat message")
@@ -63,9 +61,7 @@ def main(argv: list[str] | None = None) -> None:
 
     kwargs = _shared_kwargs(args)
 
-    if args.command == "tui":
-        run_tui(**kwargs)
-    elif args.command == "webui":
+    if args.command == "webui":
         run_webui(**kwargs)
     elif args.command == "chat":
         run_chat(args.text, **kwargs)

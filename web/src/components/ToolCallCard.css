@@ -5,21 +5,28 @@
 
 .tool-card {
   border: 1px solid var(--border);
-  border-radius: var(--radius, 8px);
+  border-radius: var(--radius);
   font-size: 12px;
   margin-top: 6px;
   overflow: hidden;
-  transition: box-shadow var(--transition-fast, 150ms ease);
+  box-shadow: var(--shadow-xs);
+  transition:
+    box-shadow var(--transition-fast),
+    border-color var(--transition-fast);
+}
+
+.tool-card:hover {
+  box-shadow: var(--shadow-sm);
 }
 
 .tool-header {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 6px 10px;
+  padding: 7px 10px;
   cursor: pointer;
   user-select: none;
-  transition: background var(--transition-fast, 150ms ease);
+  transition: background var(--transition-fast);
 }
 
 .tool-header:focus-visible {
@@ -31,16 +38,28 @@
   background: var(--bg-tertiary);
 }
 
+.tool-running {
+  border-left: 3px solid var(--accent);
+}
+
 .tool-running .tool-header {
-  background: color-mix(in srgb, var(--accent, #3b82f6) 8%, transparent);
+  background: var(--accent-light);
+}
+
+.tool-success {
+  border-left: 3px solid var(--success);
 }
 
 .tool-success .tool-header {
-  background: color-mix(in srgb, var(--success, #22c55e) 10%, transparent);
+  background: var(--success-light);
+}
+
+.tool-error {
+  border-left: 3px solid var(--error);
 }
 
 .tool-error .tool-header {
-  background: color-mix(in srgb, var(--error, #ef4444) 10%, transparent);
+  background: var(--error-light);
 }
 
 .tool-status-icon {
@@ -50,16 +69,16 @@
 }
 
 .tool-running .tool-status-icon {
-  color: var(--accent, #3b82f6);
+  color: var(--accent);
   animation: spin 1s linear infinite;
 }
 
 .tool-success .tool-status-icon {
-  color: var(--success, #22c55e);
+  color: var(--success);
 }
 
 .tool-error .tool-status-icon {
-  color: var(--error, #ef4444);
+  color: var(--error);
 }
 
 .tool-name {
@@ -69,23 +88,37 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  color: var(--text-primary);
 }
 
 .tool-status {
-  color: var(--text-secondary);
+  color: var(--text-tertiary);
   font-size: 11px;
+  font-weight: 500;
   flex-shrink: 0;
 }
 
+.tool-running .tool-status {
+  color: var(--accent);
+}
+
+.tool-success .tool-status {
+  color: var(--success);
+}
+
+.tool-error .tool-status {
+  color: var(--error);
+}
+
 .tool-toggle {
-  color: var(--text-secondary);
+  color: var(--text-tertiary);
   flex-shrink: 0;
-  transition: transform var(--transition-fast, 150ms ease);
+  transition: transform var(--transition-fast);
 }
 
 .tool-details {
   padding: 8px 10px 10px;
-  border-top: 1px solid var(--border);
+  border-top: 1px solid var(--border-light);
 }
 
 .tool-params {
@@ -94,15 +127,17 @@
   white-space: pre-wrap;
   font-family: var(--font-mono);
   font-size: 11px;
+  overflow-x: auto;
 }
 
 .tool-result pre {
   background: var(--bg-primary);
-  padding: 6px 10px;
-  border-radius: 4px;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
   overflow-x: auto;
   font-size: 11px;
   max-height: 120px;
   overflow-y: auto;
   line-height: 1.5;
+  border: 1px solid var(--border);
 }

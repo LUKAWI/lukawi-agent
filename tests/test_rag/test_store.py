@@ -38,6 +38,23 @@ class TestVectorStoreInit:
         assert store._client is None
         assert store._collection_docs is None
         assert store._collection_conv is None
+        assert store._initialized is False
+
+    def test_initialize_sets_flag(self, tmp_path: Path) -> None:
+        store = VectorStore(persist_dir=tmp_path)
+        assert store._initialized is False
+        asyncio.run(store.initialize())
+        assert store._initialized is True
+        asyncio.run(store.close())
+
+    def test_run_sync_raises_on_chromadb_error(self, tmp_path: Path) -> None:
+        store = VectorStore(persist_dir=tmp_path)
+
+        def _broken():
+            raise ValueError("simulated chromadb failure")
+
+        with pytest.raises(RuntimeError, match="ChromaDB operation failed"):
+            asyncio.run(store._run_sync(_broken))
 
 
 # ---------------------------------------------------------------------------
@@ -113,3 +130,11 @@ class TestConversations:
         self, store: VectorStore
     ) -> None:
         assert asyncio.run(store.delete_conversation("00000000-0000-0000-0000-000000000000")) is False
+
+    def test_clear_conversations_removes_all(
+        self, store: VectorStore
+    ) -> None:
+        asyncio.run(store.add_conversation("conv 1", {"user_id": "u1"}))
+        asyncio.run(store.add_conversation("conv 2", {"user_id": "u2"}))
+        cleared = asyncio.run(store.clear_conversations())
+        assert cleared == 2

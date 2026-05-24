@@ -41,12 +41,23 @@ class Settings:
         try:
             raw = self._load_yaml(self.config_path)
             expanded = self._expand_env_vars(raw) if raw else {}
+            self._normalize_db_path(expanded)
             config = AppConfig(**expanded)
             self._config = config
             return config
         except Exception as e:
             logger.error(f"Failed to load config: {e}")
             return None
+
+    @staticmethod
+    def _normalize_db_path(data: dict) -> None:
+        memory = data.get("memory", {})
+        longterm = memory.get("longterm", {}) if isinstance(memory, dict) else {}
+        db_path = longterm.get("db_path", "") if isinstance(longterm, dict) else ""
+        if db_path:
+            path = Path(db_path)
+            if not path.is_absolute():
+                longterm["db_path"] = str(Path.home() / ".lukawi" / path.name)
 
     def get(self) -> AppConfig:
         if self._config is None:

@@ -105,6 +105,8 @@ async def test_recall_searches_session_context_first():
                     Message(role=MessageRole.USER, content="今天天气怎么样"),
                 ],
             }
+        def get_all_cached_messages(self):
+            return {sid: list(msgs) for sid, msgs in self._messages_cache.items()}
 
     class FakeMemoryManager:
         def __init__(self):
@@ -133,6 +135,8 @@ async def test_recall_skips_irrelevant_session():
                     Message(role=MessageRole.USER, content="今天天气怎么样"),
                 ],
             }
+        def get_all_cached_messages(self):
+            return {sid: list(msgs) for sid, msgs in self._messages_cache.items()}
 
     class FakeMemoryManager:
         def __init__(self):
@@ -161,6 +165,8 @@ async def test_recall_enforces_limit():
                     Message(role=MessageRole.ASSISTANT, content="好的，蓝色"),
                 ],
             }
+        def get_all_cached_messages(self):
+            return {sid: list(msgs) for sid, msgs in self._messages_cache.items()}
 
     class FakeMemoryManager:
         def __init__(self):
@@ -187,6 +193,8 @@ async def test_recall_falls_back_to_longterm():
                     Message(role=MessageRole.USER, content="今天天气怎么样"),
                 ],
             }
+        def get_all_cached_messages(self):
+            return {sid: list(msgs) for sid, msgs in self._messages_cache.items()}
 
     class FakeLongTerm:
         async def search(self, query, user_id="default", limit=5):

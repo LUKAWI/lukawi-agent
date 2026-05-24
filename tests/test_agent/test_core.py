@@ -445,3 +445,105 @@ class TestAgentMalformedJson:
 class TestStopAgent:
     def test_is_exception(self):
         assert issubclass(StopAgent, Exception)
+
+
+class TestAgentPolicyEnforcement:
+
+    @pytest.mark.asyncio
+    async def test_policy_blocks_denied_tool(self, tool_registry):
+        """Agent returns DENIED when policy blocks a tool."""
+        from lukawi.agent.core import ReActAgent, AgentConfig
+        from lukawi.tools.policy import ToolPolicy, PolicyContext
+        from lukawi.config.models import ToolPolicyConfig, ToolProfileConfig
+
+        config = ToolPolicyConfig(
+            profiles={
+                "default": ToolProfileConfig(
+                    allowed_tools=["*"],
+                    denied_tools=["echo"]
+                )
+            }
+        )
+        policy = ToolPolicy(config)
+        agent = ReActAgent(
+            llm=MockProvider(responses=[
+                LLMResponse(tool_calls=[ToolCall(
+                    id="call_1", type="function",
+                    function=FunctionCall(name="echo", arguments=json.dumps({"text": "test"})),
+                )]),
+                LLMResponse(content="Tool was denied."),
+            ]),
+            tools=tool_registry,
+            config=AgentConfig(max_steps=5),
+            policy=policy,
+        )
+
+        events = []
+        async for event in agent.run("Run denied tool"):
+            events.append(event)
+
+        result_events = [e for e in events if e.type == AgentEventType.TOOL_RESULT]
+        assert len(result_events) >= 1
+        assert result_events[0].data["result"].status == ToolResultStatus.DENIED
+
+    @pytest.mark.asyncio
+    async def test_policy_allows_permitted_tool(self, tool_registry):
+        """Agent executes tool normally when policy allows it."""
+        from lukawi.agent.core import ReActAgent, AgentConfig
+        from lukawi.tools.policy import ToolPolicy, PolicyContext
+        from lukawi.config.models import ToolPolicyConfig, ToolProfileConfig
+
+        config = ToolPolicyConfig(
+            profiles={
+                "default": ToolProfileConfig(
+                    allowed_tools=["echo"],
+                    denied_tools=[]
+                )
+            }
+        )
+        policy = ToolPolicy(config)
+        agent = ReActAgent(
+            llm=MockProvider(responses=[
+                LLMResponse(tool_calls=[ToolCall(
+                    id="call_1", type="function",
+                    function=FunctionCall(name="echo", arguments=json.dumps({"text": "hello"})),
+                )]),
+                LLMResponse(content="Tool executed."),
+            ]),
+            tools=tool_registry,
+            config=AgentConfig(max_steps=5),
+            policy=policy,
+        )
+
+        events = []
+        async for event in agent.run("Run allowed tool"):
+            events.append(event)
+
+        result_events = [e for e in events if e.type == AgentEventType.TOOL_RESULT]
+        assert len(result_events) >= 1
+        assert result_events[0].data["result"].status == ToolResultStatus.SUCCESS
+
+    @pytest.mark.asyncio
+    async def test_no_policy_allows_all(self, tool_registry):
+        """Agent executes tool when no policy is configured."""
+        from lukawi.agent.core import ReActAgent, AgentConfig
+
+        agent = ReActAgent(
+            llm=MockProvider(responses=[
+                LLMResponse(tool_calls=[ToolCall(
+                    id="call_1", type="function",
+                    function=FunctionCall(name="echo", arguments=json.dumps({"text": "test"})),
+                )]),
+                LLMResponse(content="Done."),
+            ]),
+            tools=tool_registry,
+            config=AgentConfig(max_steps=5),
+        )
+
+        events = []
+        async for event in agent.run("Run tool"):
+            events.append(event)
+
+        result_events = [e for e in events if e.type == AgentEventType.TOOL_RESULT]
+        assert len(result_events) >= 1
+        assert result_events[0].data["result"].status == ToolResultStatus.SUCCESS

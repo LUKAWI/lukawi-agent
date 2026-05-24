@@ -85,8 +85,8 @@ def register_memory_tools(registry: ToolRegistry, memory_manager: MemoryManager 
             # Phase 1: Search session context (current conversation messages)
             session_manager = getattr(memory_manager, "session_manager", None)
             if session_manager:
-                session_messages = getattr(session_manager, "_messages_cache", {})
-                for session_id, messages in session_messages.items():
+                all_cached = session_manager.get_all_cached_messages()
+                for session_id, messages in all_cached.items():
                     for msg in messages:
                         if msg.content and query_lower in msg.content.lower():
                             results.append({

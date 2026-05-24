@@ -1,14 +1,14 @@
-"""Session manager with in-memory message storage (model context) and SQLite session metadata."""
+"""Session manager with SQLite-persisted session metadata and messages."""
 
 from __future__ import annotations
 
 import uuid
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import UTC, datetime
 
 import aiosqlite
 
-from lukawi.llm.base import Message
+from lukawi.llm.base import Message, MessageRole
 
 
 @dataclass
@@ -40,6 +40,20 @@ class SessionManager:
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
+
+            CREATE TABLE IF NOT EXISTS messages (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                session_id TEXT NOT NULL,
+                role TEXT NOT NULL,
+                content TEXT,
+                tool_call_id TEXT,
+                reasoning_content TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE
+            );
+
+            CREATE INDEX IF NOT EXISTS idx_messages_session
+                ON messages(session_id, id);
         """)
 
         await self._db.commit()
@@ -58,7 +72,7 @@ class SessionManager:
             raise RuntimeError("Database not initialized")
 
         session_id = str(uuid.uuid4())
-        now = datetime.now(UTC).isoformat()
+        now = datetime.now(UTC).replace(tzinfo=None).isoformat()
 
         await self._db.execute(
             "INSERT INTO sessions (id, name, created_at, updated_at) VALUES (?, ?, ?, ?)",
@@ -79,7 +93,10 @@ class SessionManager:
             raise RuntimeError("Database not initialized")
 
         async with self._db.execute(
-            "SELECT id, name, created_at, updated_at FROM sessions ORDER BY updated_at DESC"
+            """SELECT s.id, s.name, s.created_at, s.updated_at,
+                      (SELECT COUNT(*) FROM messages m WHERE m.session_id = s.id) AS message_count
+               FROM sessions s
+               ORDER BY s.updated_at DESC"""
         ) as cursor:
             rows = await cursor.fetchall()
 
@@ -90,7 +107,9 @@ class SessionManager:
             raise RuntimeError("Database not initialized")
 
         async with self._db.execute(
-            "SELECT id, name, created_at, updated_at FROM sessions WHERE id = ?",
+            """SELECT s.id, s.name, s.created_at, s.updated_at,
+                      (SELECT COUNT(*) FROM messages m WHERE m.session_id = s.id) AS message_count
+               FROM sessions s WHERE s.id = ?""",
             (session_id,)
         ) as cursor:
             row = await cursor.fetchone()
@@ -104,7 +123,7 @@ class SessionManager:
         if not self._db:
             raise RuntimeError("Database not initialized")
 
-        now = datetime.now(UTC).isoformat()
+        now = datetime.now(UTC).replace(tzinfo=None).isoformat()
         cursor = await self._db.execute(
             "UPDATE sessions SET name = ?, updated_at = ? WHERE id = ?",
             (name, now, session_id)
@@ -119,6 +138,10 @@ class SessionManager:
 
         self._messages_cache.pop(session_id, None)
 
+        await self._db.execute(
+            "DELETE FROM messages WHERE session_id = ?",
+            (session_id,)
+        )
         cursor = await self._db.execute(
             "DELETE FROM sessions WHERE id = ?",
             (session_id,)
@@ -144,7 +167,20 @@ class SessionManager:
 
         self._messages_cache[session_id].extend(messages)
 
-        now = datetime.now(UTC).isoformat()
+        for msg in messages:
+            await self._db.execute(
+                "INSERT INTO messages (session_id, role, content, tool_call_id, reasoning_content) "
+                "VALUES (?, ?, ?, ?, ?)",
+                (
+                    session_id,
+                    msg.role.value,
+                    msg.content,
+                    msg.tool_call_id,
+                    msg.reasoning_content,
+                ),
+            )
+
+        now = datetime.now(UTC).replace(tzinfo=None).isoformat()
         await self._db.execute(
             "UPDATE sessions SET updated_at = ? WHERE id = ?",
             (now, session_id)
@@ -155,20 +191,56 @@ class SessionManager:
         if not self._db:
             raise RuntimeError("Database not initialized")
 
-        return list(self._messages_cache.get(session_id, []))
+        if session_id in self._messages_cache:
+            return list(self._messages_cache[session_id])
+
+        async with self._db.execute(
+            "SELECT role, content, tool_call_id, reasoning_content "
+            "FROM messages WHERE session_id = ? ORDER BY id ASC",
+            (session_id,),
+        ) as cursor:
+            rows = await cursor.fetchall()
+
+        messages = [
+            Message(
+                role=MessageRole(row["role"]),
+                content=row["content"],
+                tool_call_id=row["tool_call_id"],
+                reasoning_content=row["reasoning_content"],
+            )
+            for row in rows
+        ]
+        self._messages_cache[session_id] = messages
+        return list(messages)
 
     async def get_message_count(self, session_id: str) -> int:
         if not self._db:
             raise RuntimeError("Database not initialized")
 
-        return len(self._messages_cache.get(session_id, []))
+        if session_id in self._messages_cache:
+            return len(self._messages_cache[session_id])
+
+        async with self._db.execute(
+            "SELECT COUNT(*) as cnt FROM messages WHERE session_id = ?",
+            (session_id,),
+        ) as cursor:
+            row = await cursor.fetchone()
+            return row["cnt"] if row else 0
+
+    def get_all_cached_messages(self) -> dict[str, list[Message]]:
+        """Return a copy of all cached messages organized by session ID.
+
+        This provides read-only access to the in-memory message cache
+        without exposing the internal _messages_cache attribute directly.
+        """
+        return {sid: list(msgs) for sid, msgs in self._messages_cache.items()}
 
     def _row_to_session_info(self, row: aiosqlite.Row) -> SessionInfo:
         sid = row["id"]
         return SessionInfo(
             id=sid,
             name=row["name"],
-            message_count=len(self._messages_cache.get(sid, [])),
-            created_at=datetime.fromisoformat(row["created_at"]),
-            updated_at=datetime.fromisoformat(row["updated_at"]),
+            message_count=row["message_count"] if "message_count" in row.keys() else 0,
+            created_at=datetime.fromisoformat(row["created_at"]).replace(tzinfo=UTC),
+            updated_at=datetime.fromisoformat(row["updated_at"]).replace(tzinfo=UTC),
         )

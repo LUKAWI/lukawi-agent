@@ -26,6 +26,7 @@ def run_webui(
             model_registry=ctx.model_registry,
             tool_registry=ctx.tool_registry,
             mcp_manager=ctx.mcp_manager,
+            skill_loader=ctx.skill_loader,
             mcp_configs=ctx.mcp_configs,
             config=ctx.config,
             tui_config=ctx.config.tui,
@@ -35,7 +36,7 @@ def run_webui(
 
         app = create_app(server_state)
 
-        port = int(os.environ.get("LUKAWI_PORT", "8000"))
+        port = int(os.environ.get("LUKAWI_PORT", "50109"))
         webbrowser.open(f"http://localhost:{port}")
 
         uvicorn.run(app, host="0.0.0.0", port=port, log_level="info")

@@ -33,6 +33,13 @@ RAG_SEARCH_TOOL = ToolDefinition(
             default="all",
         ),
         ToolParameter(
+            name="file",
+            type=ToolParameterType.STRING,
+            description="可选，指定只搜索某个文件的文件名（如 'notes.md'）。如果设置了此参数，只在该文件中搜索。",
+            required=False,
+            default="",
+        ),
+        ToolParameter(
             name="limit",
             type=ToolParameterType.INTEGER,
             description="最多返回多少条结果",
@@ -77,16 +84,15 @@ def register_rag_tools(
     """Register RAG tools in the tool registry."""
 
     async def rag_search_handler(
-        query: str, source: str = "all", limit: int = 5
+        query: str, source: str = "all", file: str = "", limit: int = 5
     ) -> ToolResult:
         if rag_manager is None:
             return ToolResult.error("RAG 系统未启用，请在配置中开启 rag.enabled")
         try:
-            sources_map = {"all": None, "docs": ["docs"], "conversations": ["conversations"]}
-            sources = sources_map.get(source)
-            if sources is None:
-                return ToolResult.error(f"无效的 source 参数: '{source}'")
-            results = await rag_manager.search(query=query, sources=sources, limit=limit)
+            if source not in ("all", "docs", "conversations"):
+                return ToolResult.error(f"无效的 source 参数: '{source}'，可选: all, docs, conversations")
+            sources = None if source == "all" else [source]
+            results = await rag_manager.search(query=query, sources=sources, limit=limit, source_path=file or None)
             if not results:
                 return ToolResult.success(result="未找到相关内容。", metadata={"count": 0})
             formatted = [

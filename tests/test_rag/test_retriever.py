@@ -56,7 +56,7 @@ class TestRetriever:
 
     @pytest.mark.asyncio
     async def test_retrieve_all_merges_and_sorts(self, mock_store, mock_embedder):
-        """retrieve() should merge results from all sources and sort by score ASC."""
+        """retrieve() should merge results from all sources and sort by score DESC."""
         mock_store.search_documents.return_value = [
             SearchResult(chunk_id="d1", content="doc a", score=0.7),
             SearchResult(chunk_id="d2", content="doc b", score=0.3),
@@ -69,8 +69,8 @@ class TestRetriever:
         results = await retriever.retrieve("query")
 
         scores = [r.score for r in results]
-        # Lower distance = better, sorted ascending
-        assert scores == [0.3, 0.7, 0.9]
+        # Higher score = better (score = 1 - cosine distance), sorted descending
+        assert scores == [0.9, 0.7, 0.3]
 
     @pytest.mark.asyncio
     async def test_retrieve_source_filter(self, mock_store, mock_embedder):
@@ -84,3 +84,23 @@ class TestRetriever:
 
         mock_store.search_documents.assert_called_once()
         mock_store.search_conversations.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_retrieve_sort_order_regression(self, mock_store, mock_embedder):
+        """retrieve() must always return results sorted by score DESC (highest first).
+
+        Regression: score=1.0-distance, so higher score = more relevant.
+        """
+        mock_store.search_documents.return_value = [
+            SearchResult(chunk_id="d1", content="low", score=0.2),
+            SearchResult(chunk_id="d2", content="high", score=0.9),
+        ]
+        mock_store.search_conversations.return_value = [
+            SearchResult(chunk_id="cv1", content="mid", score=0.5),
+        ]
+
+        retriever = Retriever(store=mock_store, embedder=mock_embedder)
+        results = await retriever.retrieve("query")
+
+        assert results[0].score >= results[-1].score, "Must be sorted DESC"
+        assert results[0].chunk_id == "d2", "Highest score should be first"

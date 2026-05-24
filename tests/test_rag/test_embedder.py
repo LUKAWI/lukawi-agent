@@ -138,3 +138,66 @@ class TestDashScopeEmbedBatch:
         assert len(results) == 1
         assert isinstance(results[0], EmbeddingResult)
         assert results[0].model == "text-embedding-v3"
+
+
+# ---------------------------------------------------------------------------
+# TestMockEmbedder
+# ---------------------------------------------------------------------------
+
+class TestMockEmbedder:
+    """Tests for MockEmbedder — deterministic hash-based embedder."""
+
+    def test_default_dimensions_match_dashscope(self):
+        from lukawi.rag.embedder import MockEmbedder
+        embedder = MockEmbedder()
+        assert embedder.dimensions == 1024
+        assert embedder.model == "mock-embedder"
+        assert embedder.DIMENSIONS == 1024
+
+    def test_custom_dimensions(self):
+        from lukawi.rag.embedder import MockEmbedder
+        embedder = MockEmbedder(dimensions=128)
+        assert embedder.dimensions == 128
+
+    def test_embed_single_returns_embedding_result(self):
+        from lukawi.rag.embedder import MockEmbedder
+        embedder = MockEmbedder()
+        result = asyncio.run(embedder.embed_single("hello world"))
+        assert isinstance(result, EmbeddingResult)
+        assert len(result.embedding) == 1024
+        assert result.model == "mock-embedder"
+
+    def test_embed_list_returns_multiple(self):
+        from lukawi.rag.embedder import MockEmbedder
+        embedder = MockEmbedder()
+        results = asyncio.run(embedder.embed(["a", "b", "c"]))
+        assert len(results) == 3
+        assert all(len(r.embedding) == 1024 for r in results)
+
+    def test_deterministic_output(self):
+        from lukawi.rag.embedder import MockEmbedder
+        embedder = MockEmbedder()
+        r1 = asyncio.run(embedder.embed_single("same text"))
+        r2 = asyncio.run(embedder.embed_single("same text"))
+        assert r1.embedding == r2.embedding
+
+    def test_different_text_different_vector(self):
+        from lukawi.rag.embedder import MockEmbedder
+        embedder = MockEmbedder()
+        r1 = asyncio.run(embedder.embed_single("hello"))
+        r2 = asyncio.run(embedder.embed_single("world"))
+        assert r1.embedding != r2.embedding
+
+    def test_unit_vector_norm(self):
+        from lukawi.rag.embedder import MockEmbedder
+        embedder = MockEmbedder()
+        result = asyncio.run(embedder.embed_single("test vector"))
+        norm = sum(x * x for x in result.embedding) ** 0.5
+        assert abs(norm - 1.0) < 1e-5
+
+    def test_empty_text_returns_unit_vector(self):
+        from lukawi.rag.embedder import MockEmbedder
+        embedder = MockEmbedder()
+        result = asyncio.run(embedder.embed_single(""))
+        norm = sum(x * x for x in result.embedding) ** 0.5
+        assert abs(norm - 1.0) < 1e-5

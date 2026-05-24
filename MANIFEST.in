@@ -1,4 +1,9 @@
 include config/default.yaml
+include mcp-servers.example.json
+include README.md
 recursive-include skills/ *
 recursive-include tests/ *.py
-global-include *.md
+prune tests/**/__pycache__
+prune web/node_modules
+prune .trae
+exclude src/lukawi.egg-info/**

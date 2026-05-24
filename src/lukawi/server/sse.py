@@ -65,15 +65,19 @@ def create_sse_router(state) -> APIRouter:
                     yield f"event: answer\ndata: {json.dumps({'content': result})}\n\n"
                 except Exception as e:
                     yield f"event: error\ndata: {json.dumps({'error': f'Command failed: {e}'})}\n\n"
-                    import traceback, sys
+                    import traceback
+                    import sys
                     print(traceback.format_exc(), file=sys.stderr)
                 yield "event: done\ndata: {}\n\n"
                 return
 
-            # Skill trigger detection
-            if state.skill_loader:
-                all_skills = state.skill_loader.list_skills()
-                matched = match_triggers(message, all_skills)
+            # Skill trigger detection — only check user-selected skills
+            if state.skill_loader and state.selected_skills:
+                enabled = [
+                    s for s in state.skill_loader.list_skills()
+                    if s.name in state.selected_skills
+                ]
+                matched = match_triggers(message, enabled)
                 for skill in matched:
                     if skill.name not in state.active_skills:
                         injection = build_skill_injection(skill)
@@ -86,9 +90,10 @@ def create_sse_router(state) -> APIRouter:
                 if session_manager and session_id:
                     history = await session_manager.load_messages(session_id)
 
-                async for event in state.agent.run(message, history=history):
+                async for event in state.agent.run(message, history=history, session_id=session_id):
                     event_type_map = {
                         AgentEventType.THINKING: "thinking",
+                        AgentEventType.STREAMING_TOKEN: "answer",
                         AgentEventType.TOOL_CALL: "tool_call",
                         AgentEventType.TOOL_RESULT: "tool_result",
                         AgentEventType.FINAL_ANSWER: "answer",
@@ -100,8 +105,14 @@ def create_sse_router(state) -> APIRouter:
 
                     payload = dict(event.data)
 
-                    if event.type == AgentEventType.FINAL_ANSWER:
-                        assistant_reply = payload.get("content", "")
+                    if event.type == AgentEventType.STREAMING_TOKEN:
+                        assistant_reply += payload.get("content", "")
+                    elif event.type == AgentEventType.FINAL_ANSWER:
+                        if not assistant_reply:
+                            assistant_reply = payload.get("content", "")
+                        else:
+                            # Content already streamed via STREAMING_TOKEN events
+                            continue
 
                     # Attach session_id to first event so frontend knows the session
                     if event.type == AgentEventType.THINKING and not session_sent:
@@ -111,17 +122,21 @@ def create_sse_router(state) -> APIRouter:
                     # Normalize tool_result to always have status + result as str
                     if event.type == AgentEventType.TOOL_RESULT:
                         result_data = payload.get("result")
-                        if hasattr(result_data, "status"):
-                            payload["status"] = str(result_data.status)
-                        if hasattr(result_data, "result"):
-                            payload["result"] = str(result_data.result)[:2000] if result_data.result else ""
+                        if result_data is not None:
+                            if hasattr(result_data, "status"):
+                                payload["status"] = result_data.status.value
+                            if hasattr(result_data, "result"):
+                                payload["result"] = str(result_data.result)[:2000] if result_data.result else ""
+                            else:
+                                payload["result"] = str(result_data)[:2000]
                         else:
-                            payload["result"] = str(result_data)[:2000] if result_data else ""
+                            payload["result"] = ""
 
                     yield f"event: {sse_type}\ndata: {json.dumps(payload, default=str)}\n\n"
             except Exception as e:
                 yield f"event: error\ndata: {json.dumps({'error': str(e)})}\n\n"
-                import traceback, sys
+                import traceback
+                import sys
                 print(traceback.format_exc(), file=sys.stderr)
 
             # Persist messages to session manager
@@ -139,6 +154,7 @@ def create_sse_router(state) -> APIRouter:
                     await state.memory_manager.save_conversation(
                         summary=assistant_reply[:200],
                         user_id="default",
+                        session_id=session_id,
                     )
 
             # Track this as the last active session for fallback
@@ -154,8 +170,8 @@ def create_sse_router(state) -> APIRouter:
 
 async def _dispatch_command(message: str, state) -> str:
     """Reuse the existing command system with a server context."""
-    from lukawi.tui.commands import create_default_registry
-    from lukawi.tui.commands.handler import CommandContext
+    from lukawi.commands import create_default_registry
+    from lukawi.commands.handler import CommandContext
 
     parts = message[1:].strip().split()
     command = parts[0]
