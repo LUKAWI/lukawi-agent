@@ -344,7 +344,7 @@ def main() -> None:
     print(f"  {_t('step1_desc2')}")
     print()
 
-    deepseek_key = _prompt(f"  {_t('deepseek_key_prompt')}", secret=True)
+    deepseek_key = _prompt(f"  {_t('deepseek_key_prompt')}")
     if deepseek_key:
         config["DEEPSEEK_API_KEY"] = deepseek_key
         config["DEEPSEEK_BASE_URL"] = _prompt(
@@ -365,7 +365,7 @@ def main() -> None:
     print(f"  {_t('step2_desc2')}")
     print()
 
-    dashscope_key = _prompt(f"  {_t('dashscope_key_prompt')}", secret=True)
+    dashscope_key = _prompt(f"  {_t('dashscope_key_prompt')}")
     if dashscope_key:
         config["DASHSCOPE_API_KEY"] = dashscope_key
     else:
@@ -403,7 +403,7 @@ def main() -> None:
     tavily_selected = any(s.get("name") == "tavily" for s in mcp_servers)
     if tavily_selected:
         print()
-        tavily_key = _prompt(f"  {_t('tavily_key_prompt')}", secret=True)
+        tavily_key = _prompt(f"  {_t('tavily_key_prompt')}")
         if tavily_key:
             config["TAVILY_API_KEY"] = tavily_key
         else:
