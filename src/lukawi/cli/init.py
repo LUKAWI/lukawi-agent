@@ -52,11 +52,13 @@ TEXTS = {
         "deepseek_key_prompt": "DeepSeek API Key (for deepseek-chat / deepseek-reasoner)",
         "deepseek_url_prompt": "DeepSeek Base URL",
         "skipped_deepseek": "⚠ Skipped — DeepSeek will not be available.",
+        "keeping_deepseek": "  (keeping existing DeepSeek key)",
         "step2_title": "Step 2: RAG / Knowledge Base (Optional)",
         "step2_desc1": "Enable document upload and semantic search.",
         "step2_desc2": "Requires a DashScope API key (Alibaba Cloud).",
         "dashscope_key_prompt": "DashScope API Key (leave empty to disable RAG)",
         "rag_disabled": "RAG disabled — you can enable it later by setting DASHSCOPE_API_KEY.",
+        "keeping_dashscope": "  (keeping existing DashScope key)",
         "step3_title": "Step 3: MCP Servers (Optional)",
         "step3_desc1": "MCP servers extend the agent with extra tools.",
         "step3_intro": "Select servers with Space, confirm with Enter, skip with Esc:",
@@ -69,6 +71,7 @@ TEXTS = {
         "mcp_custom_added": "  ✓ Added",
         "tavily_key_prompt": "Tavily API Key (for web search, get it at https://app.tavily.com)",
         "tavily_key_skipped": "⚠ Tavily selected but no API key provided — MCP will not connect.",
+        "keeping_tavily": "  (keeping existing Tavily key)",
         "save_title": "Saving configuration...",
         "wrote_env": "✓ Wrote",
         "wrote_mcp": "✓ Wrote",
@@ -81,6 +84,7 @@ TEXTS = {
         "next_3_detail": "(see skills/ directory for examples)",
         "config_files": "Configuration files:",
         "rerun": "Re-run lukawi-init anytime to update your settings.",
+        "env_hint": "[current: {masked}]",
     },
     "zh": {
         "banner_title": "Lukawi Agent — 安装向导",
@@ -94,11 +98,13 @@ TEXTS = {
         "deepseek_key_prompt": "DeepSeek API 密钥（用于 deepseek-chat / deepseek-reasoner）",
         "deepseek_url_prompt": "DeepSeek Base URL",
         "skipped_deepseek": "⚠ 已跳过 — DeepSeek 将不可用。",
+        "keeping_deepseek": "  （保持现有 DeepSeek 密钥）",
         "step2_title": "步骤 2：RAG 知识库（可选）",
         "step2_desc1": "启用文档上传和语义搜索。",
         "step2_desc2": "需要阿里云 DashScope API 密钥。",
         "dashscope_key_prompt": "DashScope API 密钥（留空则禁用 RAG）",
         "rag_disabled": "RAG 已禁用 — 您可稍后设置 DASHSCOPE_API_KEY 来启用。",
+        "keeping_dashscope": "  （保持现有 DashScope 密钥）",
         "step3_title": "步骤 3：MCP 服务器（可选）",
         "step3_desc1": "MCP 服务器为 Agent 提供额外的工具能力。",
         "step3_intro": "Space 选中 / 取消，Enter 确认，Esc 跳过：",
@@ -111,6 +117,7 @@ TEXTS = {
         "mcp_custom_added": "  ✓ 已添加",
         "tavily_key_prompt": "Tavily API 密钥（用于联网搜索，获取地址：https://app.tavily.com）",
         "tavily_key_skipped": "⚠ 已选择 Tavily 但未提供 API 密钥 — MCP 将无法连接。",
+        "keeping_tavily": "  （保持现有 Tavily 密钥）",
         "save_title": "正在保存配置...",
         "wrote_env": "✓ 已写入",
         "wrote_mcp": "✓ 已写入",
@@ -123,6 +130,7 @@ TEXTS = {
         "next_3_detail": "（参考 skills/ 目录中的示例）",
         "config_files": "配置文件：",
         "rerun": "随时重新运行 lukawi-init 来修改设置。",
+        "env_hint": "[当前: {masked}]",
     },
 }
 
@@ -312,6 +320,36 @@ def _prompt_custom_mcp():
     return {"name": name, "command": cmd.split(), "args": args.split() if args else [], "env": {}}
 
 
+def _load_existing_env() -> dict[str, str]:
+    """Load existing .env key-value pairs."""
+    existing: dict[str, str] = {}
+    if ENV_FILE.exists():
+        with open(ENV_FILE, encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if line and not line.startswith("#") and "=" in line:
+                    k, v = line.split("=", 1)
+                    existing[k.strip()] = v.strip().strip("\"'")
+    return existing
+
+
+def _mask_key(key: str) -> str:
+    """Show a masked preview of an API key (first 6 + last 4 chars)."""
+    if len(key) <= 12:
+        return key[:4] + "****"
+    return key[:6] + "..." + key[-4:]
+
+
+def _prompt_with_hint(prompt_text: str, existing_val: str = "") -> str:
+    """Prompt the user, showing existing key as hint if present."""
+    if existing_val:
+        hint = _t("env_hint").format(masked=_mask_key(existing_val))
+        display = f"{prompt_text} {hint}: "
+    else:
+        display = f"{prompt_text}: "
+    return input(display).strip()
+
+
 def main() -> None:
     global T
 
@@ -334,6 +372,8 @@ def main() -> None:
     print()
 
     config = {}
+    existing_env = _load_existing_env()
+    has_existing = bool(existing_env)
 
     # ── Step 1: LLM Provider ──
     print("─" * 44)
@@ -342,15 +382,22 @@ def main() -> None:
     print()
     print(f"  {_t('step1_desc1')}")
     print(f"  {_t('step1_desc2')}")
+    if has_existing:
+        print()
     print()
 
-    deepseek_key = _prompt(f"  {_t('deepseek_key_prompt')}")
+    deepseek_key = _prompt_with_hint(
+        f"  {_t('deepseek_key_prompt')}",
+        existing_env.get("DEEPSEEK_API_KEY", ""),
+    )
     if deepseek_key:
         config["DEEPSEEK_API_KEY"] = deepseek_key
         config["DEEPSEEK_BASE_URL"] = _prompt(
             f"  {_t('deepseek_url_prompt')}",
-            default="https://api.deepseek.com/v1",
+            default=existing_env.get("DEEPSEEK_BASE_URL", "https://api.deepseek.com/v1"),
         )
+    elif existing_env.get("DEEPSEEK_API_KEY"):
+        print(f"  {_t('keeping_deepseek')}")
     else:
         print(f"  {_t('skipped_deepseek')}")
 
@@ -365,9 +412,14 @@ def main() -> None:
     print(f"  {_t('step2_desc2')}")
     print()
 
-    dashscope_key = _prompt(f"  {_t('dashscope_key_prompt')}")
+    dashscope_key = _prompt_with_hint(
+        f"  {_t('dashscope_key_prompt')}",
+        existing_env.get("DASHSCOPE_API_KEY", ""),
+    )
     if dashscope_key:
         config["DASHSCOPE_API_KEY"] = dashscope_key
+    elif existing_env.get("DASHSCOPE_API_KEY"):
+        print(f"  {_t('keeping_dashscope')}")
     else:
         print(f"  {_t('rag_disabled')}")
 
@@ -403,9 +455,14 @@ def main() -> None:
     tavily_selected = any(s.get("name") == "tavily" for s in mcp_servers)
     if tavily_selected:
         print()
-        tavily_key = _prompt(f"  {_t('tavily_key_prompt')}")
+        tavily_key = _prompt_with_hint(
+            f"  {_t('tavily_key_prompt')}",
+            existing_env.get("TAVILY_API_KEY", ""),
+        )
         if tavily_key:
             config["TAVILY_API_KEY"] = tavily_key
+        elif existing_env.get("TAVILY_API_KEY"):
+            print(f"  {_t('keeping_tavily')}")
         else:
             print(f"  {_t('tavily_key_skipped')}")
 
@@ -424,25 +481,19 @@ def main() -> None:
 
     if config:
         env_path = ENV_FILE
-        existing = {}
-        if env_path.exists():
-            with open(env_path, encoding="utf-8") as f:
-                for line in f:
-                    line = line.strip()
-                    if line and not line.startswith("#") and "=" in line:
-                        k, v = line.split("=", 1)
-                        existing[k.strip()] = v.strip().strip("\"'")
-
+        existing = dict(existing_env)
         existing.update(config)
         with open(env_path, "w", encoding="utf-8") as f:
             f.write("# Lukawi Agent — Environment Configuration\n")
             f.write("# Generated by lukawi-init\n\n")
             for k, v in existing.items():
-                if " " in v or v == "":
+                if " " in v:
                     f.write(f'{k}="{v}"\n')
                 else:
                     f.write(f"{k}={v}\n")
         print(f"  {_t('wrote_env')} {env_path}")
+    elif existing_env:
+        print(f"  {_t('wrote_env')} {ENV_FILE} (no changes — keeping all existing keys)")
     else:
         print(f"  {_t('no_keys')}")
 
