@@ -67,6 +67,8 @@ TEXTS = {
         "mcp_custom_command": "  Command",
         "mcp_custom_args": "  Args (space-separated, optional)",
         "mcp_custom_added": "  ✓ Added",
+        "tavily_key_prompt": "Tavily API Key (for web search, get it at https://app.tavily.com)",
+        "tavily_key_skipped": "⚠ Tavily selected but no API key provided — MCP will not connect.",
         "save_title": "Saving configuration...",
         "wrote_env": "✓ Wrote",
         "wrote_mcp": "✓ Wrote",
@@ -107,6 +109,8 @@ TEXTS = {
         "mcp_custom_command": "  命令",
         "mcp_custom_args": "  参数（空格分隔，可选）",
         "mcp_custom_added": "  ✓ 已添加",
+        "tavily_key_prompt": "Tavily API 密钥（用于联网搜索，获取地址：https://app.tavily.com）",
+        "tavily_key_skipped": "⚠ 已选择 Tavily 但未提供 API 密钥 — MCP 将无法连接。",
         "save_title": "正在保存配置...",
         "wrote_env": "✓ 已写入",
         "wrote_mcp": "✓ 已写入",
@@ -395,6 +399,15 @@ def main() -> None:
                 "env": preset.get("env", {}),
             })
             print(f"    ✓ {preset['name']}")
+
+    tavily_selected = any(s.get("name") == "tavily" for s in mcp_servers)
+    if tavily_selected:
+        print()
+        tavily_key = _prompt(f"  {_t('tavily_key_prompt')}", secret=True)
+        if tavily_key:
+            config["TAVILY_API_KEY"] = tavily_key
+        else:
+            print(f"  {_t('tavily_key_skipped')}")
 
     if has_custom and not mcp_servers:
         pass
