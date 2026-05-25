@@ -130,6 +130,9 @@ mcp:
     - name: context7
       command: ["npx", "-y", "@upstash/context7-mcp"]
       args: []
+    - name: tavily
+      command: ["npx", "-y", "tavily-mcp@0.2.0"]
+      args: []
 
 # Skills Configuration
 skills:

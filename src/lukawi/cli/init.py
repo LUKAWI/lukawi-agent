@@ -27,6 +27,14 @@ PRESET_MCP = [
         "desc_en": "Provide up-to-date library documentation and code context",
         "desc_zh": "提供最新的第三方库文档和代码上下文",
     },
+    {
+        "name": "tavily",
+        "command": ["npx", "-y", "tavily-mcp@0.2.0"],
+        "args": [],
+        "env": {},
+        "desc_en": "Real-time web search via Tavily API (requires TAVILY_API_KEY)",
+        "desc_zh": "通过 Tavily API 进行实时网络搜索（需要 TAVILY_API_KEY）",
+    },
 ]
 
 T = {}  # translations — set after language selection

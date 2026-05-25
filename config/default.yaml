@@ -202,6 +202,11 @@ mcp:
       command: ["npx", "-y", "@upstash/context7-mcp"]
       args: []
 
+    # Tavily — real-time web search (requires TAVILY_API_KEY env var)
+    - name: tavily
+      command: ["npx", "-y", "tavily-mcp@0.2.0"]
+      args: []
+
 # Skills Configuration
 # Skills are SKILL.md files that give the agent specialized instructions.
 skills:

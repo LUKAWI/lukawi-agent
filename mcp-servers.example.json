@@ -10,5 +10,11 @@
     "command": ["npx", "-y", "@upstash/context7-mcp"],
     "args": [],
     "env": {}
+  },
+  {
+    "name": "tavily",
+    "command": ["npx", "-y", "tavily-mcp@0.2.0"],
+    "args": [],
+    "env": {}
   }
 ]
