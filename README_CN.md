@@ -643,7 +643,7 @@ npm run build
 cd ..
 
 # 运行测试
-pytest
+python -m pytest
 
 # 启动开发服务器
 lukawi webui
@@ -653,15 +653,15 @@ lukawi webui
 
 ```bash
 # 运行所有测试
-pytest
+python -m pytest
 
 # 运行特定模块测试
-pytest tests/test_agent/
-pytest tests/test_rag/
-pytest tests/test_tools/
+python -m pytest -v tests/test_agent/
+python -m pytest -v tests/test_rag/
+python -m pytest -v tests/test_tools/
 
 # 带覆盖率
-pytest --cov=src/lukawi --cov-report=html
+python -m pytest --cov=src/lukawi --cov-report=html
 ```
 
 ### 代码规范
@@ -670,13 +670,13 @@ pytest --cov=src/lukawi --cov-report=html
 
 ```bash
 # 代码检查
-ruff check src/
+python -m ruff check src/
 
 # 自动修复
-ruff check --fix src/
+python -m ruff check --fix src/
 
 # 类型检查
-mypy src/
+python -m mypy src/
 ```
 
 ---
@@ -834,32 +834,31 @@ lukawi-agent/
 │   ├── test_tools/              # 工具测试
 │   └── test_integration/        # 集成测试
 │
-├── web/                         # React 前端
-│   ├── index.html
-│   ├── package.json
-│   ├── vite.config.js
-│   └── src/
-│       ├── main.jsx
-│       ├── App.jsx
-│       ├── App.css
-│       ├── api.js               # API 客户端
-│       ├── context/
-│       │   └── AppContext.jsx    # 全局状态
-│       ├── hooks/
-│       │   └── useSSE.js        # SSE Hook
-│       └── components/
-│           ├── Header.jsx        # 顶栏
-│           ├── Sidebar.jsx       # 侧边栏
-│           ├── ChatPanel.jsx     # 聊天面板
-│           ├── MessageList.jsx   # 消息列表
-│           ├── InputBar.jsx      # 输入栏
-│           ├── StatusBar.jsx     # 状态栏
-│           ├── ToolCallCard.jsx  # 工具调用卡片
-│           ├── WelcomeScreen.jsx # 欢迎屏
-│           └── icons/           # 图标组件
-│
-└── dist/                        # 构建输出（sdist）
-    └── lukawi-0.1.0.tar.gz
+└── web/                         # React 前端
+    ├── index.html
+    ├── package.json
+    ├── vite.config.js
+    └── src/
+        ├── main.jsx
+        ├── App.jsx
+        ├── App.css
+        ├── api.js               # API 客户端
+        ├── context/
+        │   └── AppContext.jsx    # 全局状态
+        ├── hooks/
+        │   └── useSSE.js        # SSE Hook
+        └── components/
+            ├── Header.jsx        # 顶栏
+            ├── Sidebar.jsx       # 侧边栏
+            ├── ChatPanel.jsx     # 聊天面板
+            ├── MessageList.jsx   # 消息列表
+            ├── InputBar.jsx      # 输入栏
+            ├── StatusBar.jsx     # 状态栏
+            ├── ToolCallCard.jsx  # 工具调用卡片
+            ├── WelcomeScreen.jsx # 欢迎屏
+            └── icons/           # 图标组件
+
+
 ```
 
 ---
