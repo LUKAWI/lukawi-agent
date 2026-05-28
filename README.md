@@ -129,7 +129,7 @@ cd lukawi-agent
 pip install -e ".[dev]"
 
 # Run tests
-pytest
+python -m pytest
 
 # Build frontend
 cd web && npm install && npm run build
@@ -268,7 +268,7 @@ cd lukawi-agent
 pip install -e ".[dev]"
 
 # 运行测试
-pytest
+python -m pytest
 
 # 构建前端
 cd web && npm install && npm run build
