@@ -3,9 +3,7 @@
 @tailwind utilities;
 
 @layer base {
-  /* ═══════════════════════════════════════════
-     Design Tokens — Light Theme (default)
-     ═══════════════════════════════════════════ */
+  /* Light Theme (default) */
   :root {
     --bg: #f7f7f4;
     --surface: #ffffff;
@@ -41,9 +39,7 @@
     color-scheme: light;
   }
 
-  /* ═══════════════════════════════════════════
-     Design Tokens — Dark Theme
-     ═══════════════════════════════════════════ */
+  /* Dark Theme */
   [data-theme="dark"] {
     --bg: #1a1a18;
     --surface: #252522;
@@ -199,9 +195,7 @@
   .scrollbar-thin::-webkit-scrollbar { width: 6px; height: 6px; }
 }
 
-/* ═══════════════════════════════════════════
-   Markdown Body Styles (GitHub-like)
-   ═══════════════════════════════════════════ */
+/* Markdown Body Styles */
 .markdown-body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif;
   font-size: 14px;
@@ -412,9 +406,7 @@
   margin-left: 0.5em;
 }
 
-/* ═══════════════════════════════════════════
-   Syntax Highlighting (IDE-like)
-   ═══════════════════════════════════════════ */
+/* Syntax Highlighting */
 
 /* Light theme */
 .markdown-body pre {

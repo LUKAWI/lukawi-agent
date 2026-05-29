@@ -1,5 +1,3 @@
-// ── API Models ──
-
 export interface ModelInfo {
   name: string;
   model: string;
@@ -48,8 +46,6 @@ export interface StatusData {
   tokens?: number;
 }
 
-// ── Chat Types ──
-
 export interface TextBlock {
   type: 'text';
   content: string;
@@ -76,8 +72,6 @@ export interface ChatMessage {
   timestamp: number;
 }
 
-// ── SSE Events ──
-
 export interface SSEEvent {
   event: string;
   data: {
@@ -91,12 +85,60 @@ export interface SSEEvent {
   };
 }
 
-// ── App State ──
+// ── SSE Event Type Guards ──
+
+export interface SSEThinkingEvent {
+  event: 'thinking';
+  data: { session_id?: string };
+}
+
+export interface SSEToolCallEvent {
+  event: 'tool_call';
+  data: { tool: string; params?: Record<string, unknown> };
+}
+
+export interface SSEToolResultEvent {
+  event: 'tool_result';
+  data: { result: unknown; status: string };
+}
+
+export interface SSEAnswerEvent {
+  event: 'answer';
+  data: { content: string };
+}
+
+export interface SSEErrorEvent {
+  event: 'error';
+  data: { error: string };
+}
+
+export type SSEEventTyped = SSEThinkingEvent | SSEToolCallEvent | SSEToolResultEvent | SSEAnswerEvent | SSEErrorEvent;
+
+export function isSSEThinkingEvent(event: { event: string; data: unknown }): event is SSEThinkingEvent {
+  return event.event === 'thinking';
+}
+
+export function isSSEToolCallEvent(event: { event: string; data: unknown }): event is SSEToolCallEvent {
+  return event.event === 'tool_call';
+}
+
+export function isSSEToolResultEvent(event: { event: string; data: unknown }): event is SSEToolResultEvent {
+  return event.event === 'tool_result';
+}
+
+export function isSSEAnswerEvent(event: { event: string; data: unknown }): event is SSEAnswerEvent {
+  return event.event === 'answer';
+}
+
+export function isSSEErrorEvent(event: { event: string; data: unknown }): event is SSEErrorEvent {
+  return event.event === 'error';
+}
 
 export interface AppState {
   messages: ChatMessage[];
   streamingId: string | null;
   isLoading: boolean;
+  isThinking: boolean;
   models: ModelInfo[];
   currentModel: string;
   skills: SkillInfo[];
@@ -118,6 +160,7 @@ export interface AppState {
 export type AppAction =
   | { type: 'ADD_USER_MESSAGE'; payload: ChatMessage }
   | { type: 'START_STREAMING'; payload: { id: string } }
+  | { type: 'SET_THINKING'; payload: boolean }
   | { type: 'APPEND_TOKEN'; payload: string }
   | { type: 'SET_TOOL_CALL'; payload: ToolCallBlock }
   | { type: 'UPDATE_TOOL_RESULT'; payload: { result: string; status: string } }

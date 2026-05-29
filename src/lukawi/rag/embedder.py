@@ -1,4 +1,4 @@
-"""Embedding clients — DashScope text-embedding-v3 and MockEmbedder for development."""
+"""Embedding clients — DashScope text-embedding-v4 and MockEmbedder for development."""
 
 from __future__ import annotations
 
@@ -23,14 +23,14 @@ class EmbeddingResult:
 
 
 class DashScopeEmbedder:
-    """Client for DashScope text-embedding-v3 API."""
+    """Client for DashScope text-embedding-v4 API."""
 
     MAX_BATCH_SIZE = 10
 
     def __init__(
         self,
         api_key: str,
-        model: str = "text-embedding-v3",
+        model: str = "text-embedding-v4",
         dimensions: int = 1024,
     ) -> None:
         self.api_key = api_key

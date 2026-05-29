@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { useSSE } from '../hooks/useSSE';
+import { useGSAP, gsap, getDuration } from '../lib/gsap';
 import Logo from './Logo';
 
 const EXAMPLES = [
@@ -10,18 +11,57 @@ const EXAMPLES = [
 
 export default function WelcomeScreen() {
   const { sendMessage } = useSSE();
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useGSAP(() => {
+    const tl = gsap.timeline({ defaults: { ease: 'power3.out' } });
+
+    tl.from('.welcome-logo', {
+      scale: 0,
+      rotation: -180,
+      duration: getDuration(0.8),
+      ease: 'back.out(1.7)',
+    });
+
+    tl.from('.welcome-title', {
+      y: 30,
+      opacity: 0,
+      duration: getDuration(0.5),
+    }, '-=0.3');
+
+    tl.from('.welcome-desc', {
+      y: 20,
+      opacity: 0,
+      duration: getDuration(0.4),
+    }, '-=0.2');
+
+    tl.from('.welcome-example > *', {
+      y: 20,
+      opacity: 0,
+      scale: 0.9,
+      duration: getDuration(0.4),
+      ease: 'back.out(1.5)',
+      stagger: 0.1,
+      clearProps: 'all',
+    }, '-=0.2');
+
+    tl.from('.welcome-version', {
+      opacity: 0,
+      duration: getDuration(0.3),
+    }, '-=0.1');
+  }, { scope: containerRef });
 
   return (
-    <div className="flex-1 flex flex-col items-center justify-center px-6 py-8 animate-[fade-in_400ms_ease]">
+    <div ref={containerRef} className="flex-1 flex flex-col items-center justify-center px-6 py-8">
       <div className="flex flex-col items-center gap-5 max-w-[400px] w-full text-center">
-        <Logo size={56} />
-        <h1 className="font-sans text-display text-[var(--text)]">
+        <Logo size={56} className="welcome-logo" />
+        <h1 className="welcome-title font-sans text-display text-[var(--text)]">
           Lukawi Agent
         </h1>
-        <p className="text-[15px] text-[var(--text-secondary)] leading-relaxed max-w-[340px]">
+        <p className="welcome-desc text-[15px] text-[var(--text-secondary)] leading-relaxed max-w-[340px]">
           Your AI assistant with tools. Ask questions, write code, browse the web, and more.
         </p>
-        <div className="flex flex-wrap justify-center gap-2 mt-3">
+        <div className="welcome-example flex flex-wrap justify-center gap-2 mt-3">
           {EXAMPLES.map((text) => (
             <button
               key={text}
@@ -32,9 +72,6 @@ export default function WelcomeScreen() {
             </button>
           ))}
         </div>
-      </div>
-      <div className="absolute bottom-4 text-[12px] font-medium text-[var(--text-tertiary)]">
-        v0.2.0
       </div>
     </div>
   );

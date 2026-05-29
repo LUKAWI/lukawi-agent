@@ -2,6 +2,13 @@ import { useCallback, useRef } from 'react';
 import { useApp } from '../context/AppContext';
 import { api } from '../api';
 import type { ChatMessage } from '../types';
+import {
+  isSSEThinkingEvent,
+  isSSEToolCallEvent,
+  isSSEToolResultEvent,
+  isSSEAnswerEvent,
+  isSSEErrorEvent,
+} from '../types';
 
 export function useSSE() {
   const { state, dispatch } = useApp();
@@ -29,52 +36,41 @@ export function useSSE() {
         sessionId: state.currentSessionId,
         knowledgeSources: state.selectedKnowledgeSources,
         onEvent(eventType, data) {
-          switch (eventType) {
-            case 'thinking':
-              dispatch({ type: 'APPEND_TOKEN', payload: '\n🧐 Thinking...' });
-              if (!sessionCaptured && (data as { session_id?: string }).session_id) {
-                dispatch({
-                  type: 'SET_CURRENT_SESSION',
-                  payload: (data as { session_id: string }).session_id,
-                });
-                sessionCaptured = true;
-              }
-              break;
-            case 'tool_call':
-              dispatch({
-                type: 'APPEND_TOKEN',
-                payload: `\n🔧 Using tool: **${(data as { tool: string }).tool}**`,
-              });
-              dispatch({
-                type: 'SET_TOOL_CALL',
-                payload: {
-                  type: 'tool',
-                  id: crypto.randomUUID(),
-                  tool: (data as { tool: string }).tool,
-                  params: (data as { params: Record<string, unknown> }).params || {},
-                  status: 'running',
-                  collapsed: true,
-                },
-              });
-              break;
-            case 'tool_result':
-              dispatch({
-                type: 'UPDATE_TOOL_RESULT',
-                payload: {
-                  result:
-                    typeof (data as { result: unknown }).result === 'string'
-                      ? (data as { result: string }).result
-                      : JSON.stringify((data as { result: unknown }).result, null, 2),
-                  status: (data as { status: string }).status === 'success' ? 'success' : 'error',
-                },
-              });
-              break;
-            case 'answer':
-              dispatch({ type: 'APPEND_TOKEN', payload: (data as { content: string }).content || '' });
-              break;
-            case 'error':
-              dispatch({ type: 'APPEND_TOKEN', payload: `\n❌ Error: ${(data as { error: string }).error}` });
-              break;
+          const event = { event: eventType, data };
+
+          if (isSSEThinkingEvent(event)) {
+            dispatch({ type: 'SET_THINKING', payload: true });
+            if (!sessionCaptured && event.data.session_id) {
+              dispatch({ type: 'SET_CURRENT_SESSION', payload: event.data.session_id });
+              sessionCaptured = true;
+            }
+          } else if (isSSEToolCallEvent(event)) {
+            dispatch({
+              type: 'SET_TOOL_CALL',
+              payload: {
+                type: 'tool',
+                id: crypto.randomUUID(),
+                tool: event.data.tool,
+                params: event.data.params || {},
+                status: 'running',
+                collapsed: true,
+              },
+            });
+          } else if (isSSEToolResultEvent(event)) {
+            dispatch({
+              type: 'UPDATE_TOOL_RESULT',
+              payload: {
+                result:
+                  typeof event.data.result === 'string'
+                    ? event.data.result
+                    : JSON.stringify(event.data.result, null, 2),
+                status: event.data.status === 'success' ? 'success' : 'error',
+              },
+            });
+          } else if (isSSEAnswerEvent(event)) {
+            dispatch({ type: 'APPEND_TOKEN', payload: event.data.content });
+          } else if (isSSEErrorEvent(event)) {
+            dispatch({ type: 'APPEND_TOKEN', payload: `\n❌ Error: ${event.data.error}` });
           }
         },
         onError(err) {
@@ -86,7 +82,7 @@ export function useSSE() {
         },
       });
     },
-    [dispatch, state.currentSessionId],
+    [dispatch, state.currentSessionId, state.selectedKnowledgeSources],
   );
 
   const clearMessages = useCallback(() => {
