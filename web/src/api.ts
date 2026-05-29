@@ -70,11 +70,13 @@ export const api = {
       onError,
       onDone,
       sessionId,
+      knowledgeSources,
     }: {
       onEvent: (eventType: string, data: Record<string, unknown>) => void;
       onError: (err: Error) => void;
       onDone: () => void;
       sessionId: string | null;
+      knowledgeSources?: string[];
     },
   ) {
     const controller = new AbortController();
@@ -82,7 +84,7 @@ export const api = {
     fetch(`${BASE}/api/chat`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message, session_id: sessionId || '' }),
+      body: JSON.stringify({ message, session_id: sessionId || '', knowledge_sources: knowledgeSources || [] }),
       signal: controller.signal,
     })
       .then(async (response) => {

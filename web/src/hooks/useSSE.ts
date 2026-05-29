@@ -27,6 +27,7 @@ export function useSSE() {
 
       abortRef.current = api.chatStream(message, {
         sessionId: state.currentSessionId,
+        knowledgeSources: state.selectedKnowledgeSources,
         onEvent(eventType, data) {
           switch (eventType) {
             case 'thinking':

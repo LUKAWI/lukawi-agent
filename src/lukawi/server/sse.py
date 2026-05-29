@@ -18,6 +18,7 @@ logger = logging.getLogger(__name__)
 class ChatRequest(BaseModel):
     message: str
     session_id: str = ""
+    knowledge_sources: list[str] = []
 
 
 def create_sse_router(state) -> APIRouter:
@@ -90,7 +91,7 @@ def create_sse_router(state) -> APIRouter:
                 if session_manager and session_id:
                     history = await session_manager.load_messages(session_id)
 
-                async for event in state.agent.run(message, history=history, session_id=session_id):
+                async for event in state.agent.run(message, history=history, session_id=session_id, knowledge_sources=req.knowledge_sources):
                     event_type_map = {
                         AgentEventType.THINKING: "thinking",
                         AgentEventType.STREAMING_TOKEN: "answer",

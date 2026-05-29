@@ -58,11 +58,11 @@ class RAGManager:
         await self.store.add_documents(chunks)
         return {"path": source_key, "filename": Path(source_key).name, "chunks": len(chunks), "replaced": existing > 0}
 
-    async def search(self, query: str, user_id: str = "default", sources: list[str] | None = None, limit: int = 5, session_id: str | None = None, source_path: str | None = None) -> list[SearchResult]:
+    async def search(self, query: str, user_id: str = "default", sources: list[str] | None = None, limit: int = 5, session_id: str | None = None, source_path: str | None = None, source_paths: list[str] | None = None) -> list[SearchResult]:
         """Unified search across documents and conversations."""
         if not self.retriever:
             raise DocumentLoadError("RAGManager not initialized")
-        return await self.retriever.retrieve(query=query, user_id=user_id, sources=sources, limit_per_source=limit, session_id=session_id, source_path=source_path)
+        return await self.retriever.retrieve(query=query, user_id=user_id, sources=sources, limit_per_source=limit, session_id=session_id, source_path=source_path, source_paths=source_paths)
 
     async def index_conversation(self, content: str, user_id: str = "default", metadata: dict | None = None, session_id: str | None = None) -> str:
         """Index a conversation summary into ChromaDB."""

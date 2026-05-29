@@ -195,13 +195,17 @@ class VectorStore:
         return ids
 
     async def search_documents(
-        self, query_text: str, limit: int = 5, source_path: str | None = None
+        self, query_text: str, limit: int = 5, source_path: str | None = None, source_paths: list[str] | None = None
     ) -> list[SearchResult]:
-        """Semantic search over the document collection, optionally scoped to *source_path*."""
+        """Semantic search over the document collection, optionally scoped to *source_paths*."""
         if self._collection_docs is None:
             return []
 
         col = self._collection_docs
+
+        all_paths = list(source_paths or [])
+        if source_path and source_path not in all_paths:
+            all_paths.append(source_path)
 
         if self._embedder:
             emb_results = await self._embedder.embed(query_text)
@@ -209,15 +213,17 @@ class VectorStore:
 
             def _query():
                 kwargs: dict = {"query_embeddings": query_embeddings, "n_results": limit}
-                if source_path:
-                    kwargs["where"] = {"source_path": source_path}
+                where = _build_where(all_paths)
+                if where:
+                    kwargs["where"] = where
                 return col.query(**kwargs)
         else:
 
             def _query():
                 kwargs: dict = {"query_texts": [query_text], "n_results": limit}
-                if source_path:
-                    kwargs["where"] = {"source_path": source_path}
+                where = _build_where(all_paths)
+                if where:
+                    kwargs["where"] = where
                 return col.query(**kwargs)
 
         results = await self._run_sync(_query)
@@ -401,3 +407,11 @@ class VectorStore:
             return []
 
         return out
+
+
+def _build_where(source_paths: list[str]) -> dict | None:
+    if not source_paths:
+        return None
+    if len(source_paths) == 1:
+        return {"source_path": source_paths[0]}
+    return {"$or": [{"source_path": p} for p in source_paths]}

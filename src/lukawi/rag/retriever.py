@@ -22,18 +22,27 @@ class Retriever:
         limit_per_source: int = 5,
         session_id: str | None = None,
         source_path: str | None = None,
+        source_paths: list[str] | None = None,
     ) -> list[SearchResult]:
         """Search across specified sources, merge and sort by score descending.
 
         Higher scores indicate higher relevance (score = 1 - cosine distance).
+        When *source_paths* is provided, only the "docs" source is searched
+        (conversations are excluded to avoid stale conversation summaries).
         """
-        if sources is None:
+        all_source_paths = list(source_paths or [])
+        if source_path and source_path not in all_source_paths:
+            all_source_paths.append(source_path)
+
+        if all_source_paths:
+            sources = ["docs"]
+        elif sources is None:
             sources = ["docs", "conversations"]
 
         all_results: list[SearchResult] = []
 
         if "docs" in sources:
-            doc_results = await self.retrieve_documents(query, limit=limit_per_source, source_path=source_path)
+            doc_results = await self.retrieve_documents(query, limit=limit_per_source, source_paths=all_source_paths if all_source_paths else None)
             all_results.extend(doc_results)
 
         if "conversations" in sources:
@@ -46,10 +55,10 @@ class Retriever:
         return all_results
 
     async def retrieve_documents(
-        self, query: str, limit: int = 5, source_path: str | None = None
+        self, query: str, limit: int = 5, source_path: str | None = None, source_paths: list[str] | None = None
     ) -> list[SearchResult]:
-        """Search only the documents collection, optionally scoped to *source_path*."""
-        return await self.store.search_documents(query_text=query, limit=limit, source_path=source_path)
+        """Search only the documents collection, optionally scoped to *source_paths*."""
+        return await self.store.search_documents(query_text=query, limit=limit, source_path=source_path, source_paths=source_paths)
 
     async def retrieve_conversations(
         self, query: str, user_id: str = "default", limit: int = 5, session_id: str | None = None

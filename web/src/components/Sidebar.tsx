@@ -176,7 +176,9 @@ export default function Sidebar() {
         await api.deleteRagDocument(confirmDelete.path);
         api.getRagDocuments().then((data) => dispatch({ type: 'SET_RAG_DOCUMENTS', payload: data }));
       }
-    } catch {}
+    } catch (err) {
+      setUploadError((err as Error).message || 'Delete failed');
+    }
     setConfirmDelete(null);
   };
 

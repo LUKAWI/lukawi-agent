@@ -30,11 +30,11 @@ class TestRetriever:
         expected = [SearchResult(chunk_id="c1", content="hello", score=0.5)]
         mock_store.search_documents.return_value = expected
 
-        retriever = Retriever(store=mock_store, embedder=mock_embedder)
+        retriever = Retriever(store=mock_store)
         result = await retriever.retrieve_documents("hello", limit=3)
 
         mock_store.search_documents.assert_called_once_with(
-            query_text="hello", limit=3
+            query_text="hello", limit=3, source_path=None, source_paths=None
         )
         assert result[0].chunk_id == "c1"
 
@@ -44,13 +44,13 @@ class TestRetriever:
         expected = [SearchResult(chunk_id="cv1", content="hi there", score=0.4)]
         mock_store.search_conversations.return_value = expected
 
-        retriever = Retriever(store=mock_store, embedder=mock_embedder)
+        retriever = Retriever(store=mock_store)
         result = await retriever.retrieve_conversations(
             "hello", user_id="u1", limit=3
         )
 
         mock_store.search_conversations.assert_called_once_with(
-            query_text="hello", user_id="u1", limit=3
+            query_text="hello", user_id="u1", limit=3, session_id=None
         )
         assert result[0].chunk_id == "cv1"
 
@@ -65,7 +65,7 @@ class TestRetriever:
             SearchResult(chunk_id="cv1", content="conv a", score=0.9),
         ]
 
-        retriever = Retriever(store=mock_store, embedder=mock_embedder)
+        retriever = Retriever(store=mock_store)
         results = await retriever.retrieve("query")
 
         scores = [r.score for r in results]
@@ -79,7 +79,7 @@ class TestRetriever:
             SearchResult(chunk_id="d1", content="doc", score=0.5),
         ]
 
-        retriever = Retriever(store=mock_store, embedder=mock_embedder)
+        retriever = Retriever(store=mock_store)
         await retriever.retrieve("query", sources=["docs"])
 
         mock_store.search_documents.assert_called_once()
@@ -99,7 +99,7 @@ class TestRetriever:
             SearchResult(chunk_id="cv1", content="mid", score=0.5),
         ]
 
-        retriever = Retriever(store=mock_store, embedder=mock_embedder)
+        retriever = Retriever(store=mock_store)
         results = await retriever.retrieve("query")
 
         assert results[0].score >= results[-1].score, "Must be sorted DESC"
