@@ -92,6 +92,7 @@ class ReActAgent:
         user_message: str,
         history: list[Message] | None = None,
         session_id: str | None = None,
+        knowledge_sources: list[str] | None = None,
     ) -> AsyncGenerator[AgentEvent, None]:
         messages = list(history or [])
         messages.append(Message(role=MessageRole.USER, content=user_message))
@@ -100,8 +101,8 @@ class ReActAgent:
         if self._extra_system_messages:
             system_content += "\n\n" + "\n\n".join(self._extra_system_messages)
 
-        if self.memory_manager is not None:
-            memories = await self.memory_manager.recall(query=user_message, limit=5, session_id=session_id)
+        if self.memory_manager is not None and knowledge_sources:
+            memories = await self.memory_manager.recall(query=user_message, limit=5, session_id=session_id, source_paths=knowledge_sources)
             if memories:
                 memory_lines = ["## 相关记忆"]
                 for m in memories:

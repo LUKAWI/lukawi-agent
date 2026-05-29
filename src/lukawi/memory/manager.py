@@ -83,11 +83,11 @@ class MemoryManager:
         user_id: str = "default",
         limit: int = 5,
         session_id: str | None = None,
-        source_path: str | None = None,
+        source_paths: list[str] | None = None,
     ) -> list[Memory]:
         if self.rag:
             results = await self.rag.search(
-                query=query, user_id=user_id, limit=limit, session_id=session_id, source_path=source_path
+                query=query, user_id=user_id, limit=limit, session_id=session_id, source_paths=source_paths
             )
             return [self._search_result_to_memory(r) for r in results]
 

@@ -1,17 +1,11 @@
 import React, { useRef, useEffect, memo, useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { useSSE } from '../hooks/useSSE';
-import { marked } from 'marked';
+import { processMarkdown } from '../lib/markdown';
 import { cn } from '../lib/utils';
 import { ChevronDown, ChevronRight, Check, X, Loader2, Copy, CheckCheck } from 'lucide-react';
 import type { ChatMessage, ToolCallBlock, TextBlock } from '../types';
 import WelcomeScreen from './WelcomeScreen';
-
-const linkRenderer = new marked.Renderer();
-linkRenderer.link = ({ href, title, text }) => {
-  const titleAttr = title ? ` title="${title}"` : '';
-  return `<a href="${href}" target="_blank" rel="noopener noreferrer"${titleAttr}>${text}</a>`;
-};
 
 function ToolCard({ toolCall }: { toolCall: ToolCallBlock }) {
   const [collapsed, setCollapsed] = useState(toolCall.collapsed !== false);
@@ -77,7 +71,7 @@ function CopyButton({ text }: { text: string }) {
 }
 
 function TextBlockRenderer({ content }: { content: string }) {
-  const html = marked.parse(content, { breaks: true, renderer: linkRenderer }) as string;
+  const html = processMarkdown(content);
   return <div className="markdown-body text-[14px] leading-relaxed" dangerouslySetInnerHTML={{ __html: html }} />;
 }
 

@@ -95,7 +95,7 @@ class TestSearch:
             asyncio.run(mgr.initialize())
             asyncio.run(mgr.search("hello", user_id="u1", limit=3))
         mock_retriever.retrieve.assert_awaited_once_with(
-            query="hello", user_id="u1", sources=None, limit_per_source=3
+            query="hello", user_id="u1", sources=None, limit_per_source=3, session_id=None, source_path=None, source_paths=None
         )
 
 
