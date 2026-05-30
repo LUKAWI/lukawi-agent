@@ -26,7 +26,7 @@ def run_repl(
     )
 
     try:
-        rprint("[bold green]Lukawi Agent v0.1.0[/bold green]")
+        rprint("[bold green]Lukawi Agent v0.1.3[/bold green]")
         rprint("Type /help for commands, /quit to exit.")
 
         async def _handle_message(text: str) -> None:

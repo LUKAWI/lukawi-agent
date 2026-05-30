@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 
 def create_app(state) -> FastAPI:
-    app = FastAPI(title="Lukawi Agent", version="0.1.0")
+    app = FastAPI(title="Lukawi Agent", version="0.1.3")
 
     app.add_middleware(
         CORSMiddleware,
