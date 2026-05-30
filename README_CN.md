@@ -299,6 +299,9 @@ DEEPSEEK_API_KEY=sk-your-deepseek-api-key
 
 # 可选项（启用 RAG 知识库时需要）
 DASHSCOPE_API_KEY=sk-your-dashscope-api-key
+
+# 可选项（启用 Tavily 网络搜索时需要）
+TAVILY_API_KEY=tvly-xxxxxxxxx
 ```
 
 ### 配置文件存储位置
@@ -435,6 +438,67 @@ MCP（Model Context Protocol）允许 Agent 通过标准化协议连接外部工
 |---|---|---|
 | **sequential-thinking** | 将复杂问题拆解为逐步推理 | 通过 `lukawi-init` 勾选，自动安装 |
 | **context7** | 提供最新库文档和代码上下文 | 通过 `lukawi-init` 勾选，自动安装 |
+| **tavily** | 实时网络搜索 | 通过 `lukawi-init` 勾选，自动安装 |
+
+### 配置 Tavily 网络搜索
+
+Tavily 提供实时网络搜索能力，让 Agent 能够获取最新信息。
+
+#### 配置步骤
+
+1. **获取 API Key**
+
+   访问 [https://app.tavily.com](https://app.tavily.com) 注册并获取 API Key
+
+2. **运行初始化向导**
+
+   ```bash
+   lukawi-init
+   ```
+
+3. **选择 Tavily 服务器**
+
+   在 MCP 服务器选择界面，用 **空格键** 勾选 `tavily`：
+
+   ```
+    > [x] sequential-thinking  — 将复杂问题拆解为分步推理
+      [x] context7             — 提供最新库文档和代码上下文
+      [x] tavily               — 通过 Tavily API 进行实时网络搜索
+   ```
+
+4. **输入 API Key**
+
+   向导会提示输入 Tavily API Key：
+
+   ```
+   Tavily API 密钥（用于联网搜索，获取地址：https://app.tavily.com）: tvly-xxxxxxxxx
+   ```
+
+   > ⚠️ 如果选择了 Tavily 但未提供 API Key，MCP 将无法连接。
+
+5. **验证配置**
+
+   启动 WebUI 后，在侧边栏 MCP 面板中确认 Tavily 服务器已连接。
+
+#### 手动配置
+
+如果需要手动配置，编辑 `~/.lukawi/mcp-servers.json`：
+
+```json
+[
+  {
+    "name": "tavily",
+    "command": "npx",
+    "args": ["-y", "tavily-mcp@0.2.0"]
+  }
+]
+```
+
+并在 `.env` 文件中添加：
+
+```env
+TAVILY_API_KEY=tvly-xxxxxxxxx
+```
 
 ### 添加自定义 MCP 服务器
 
@@ -459,6 +523,11 @@ MCP（Model Context Protocol）允许 Agent 通过标准化协议连接外部工
     "name": "context7",
     "command": "npx",
     "args": ["-y", "@upstash/context7-mcp"]
+  },
+  {
+    "name": "tavily",
+    "command": "npx",
+    "args": ["-y", "tavily-mcp@0.2.0"]
   }
 ]
 ```

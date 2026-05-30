@@ -40,7 +40,10 @@ lukawi-init
 This interactive wizard (bilingual EN/ZH) will guide you through:
 - **DeepSeek API Key** — required for LLM chat
 - **DashScope API Key** — optional, for document upload & semantic search
-- **MCP Servers** — optional, select presets (sequential-thinking, context7) with Space key
+- **MCP Servers** — optional, select presets with Space key:
+  - `sequential-thinking` — step-by-step reasoning for complex problems
+  - `context7` — up-to-date library documentation
+  - `tavily` — real-time web search (requires [Tavily API Key](https://app.tavily.com))
 
 All keys are stored in a local `.env` file. They are **never** sent anywhere except to the API providers you configure.
 
@@ -80,6 +83,9 @@ DEEPSEEK_API_KEY=sk-...
 
 # Optional: DashScope for RAG / Knowledge Base
 DASHSCOPE_API_KEY=sk-...
+
+# Optional: Tavily for web search
+TAVILY_API_KEY=tvly-...
 ```
 
 MCP servers are managed via `lukawi-init` and stored in `~/.lukawi/mcp-servers.json`.
@@ -179,7 +185,10 @@ lukawi-init
 交互式配置向导（支持中/英文）会引导你配置：
 - **DeepSeek API Key** — 必填，用于 LLM 对话
 - **DashScope API Key** — 可选，用于文档上传和语义搜索
-- **MCP 服务器** — 可选，用空格键选择预设（sequential-thinking、context7）
+- **MCP 服务器** — 可选，用空格键选择预设：
+  - `sequential-thinking` — 将复杂问题拆解为分步推理
+  - `context7` — 提供最新库文档和代码上下文
+  - `tavily` — 实时网络搜索（需要 [Tavily API Key](https://app.tavily.com)）
 
 所有密钥保存在本地 `.env` 文件中，**绝不会**发送到你配置的 API 提供商以外的任何地方。
 
