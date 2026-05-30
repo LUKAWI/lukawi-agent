@@ -65,3 +65,14 @@ docs/
 # Runtime data
 chroma_db/
 memory_db/
+
+# Design docs and AI artifacts
+DESIGN.md
+*.design.md
+skills-lock.json
+.agents/
+
+# Frontend tests
+web/src/**/*.test.*
+web/src/test/
+web/vitest.config.ts
