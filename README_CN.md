@@ -94,7 +94,7 @@ Lukawi Agent 是一个完全本地化的 AI Agent 框架。你只需要提供 AP
 | **知识库（RAG）** | 文档上传、切片、向量化、语义检索 | ChromaDB、DashScope Embedding |
 | **技能（Skills）** | 通过 SKILL.md 扩增提示词 | 声明式 YAML front-matter |
 | **MCP 协议** | 接入外部工具服务器 | Model Context Protocol |
-| **WebUI** | React 聊天界面、会话管理、文档管理 | React + Vite + SSE |
+| **WebUI** | React + TypeScript 聊天界面、会话管理、文档管理 | React + TypeScript + Vite + Tailwind CSS + GSAP + SSE |
 | **终端 REPL** | 命令行交互式对话 | Rich 美化输出 |
 | **初始化向导** | 交互式配置 API 密钥和 MCP 服务器 | 终端原生输入（跨平台） |
 
@@ -612,12 +612,14 @@ lukawi-agent/
 │   ├── skills/                  # 技能加载和执行器
 │   ├── tools/                   # 工具系统（注册、执行、策略）
 │   └── utils/                   # 工具函数（日志、辅助）
-├── web/                         # React 前端
+├── web/                         # React + TypeScript 前端
 │   ├── src/
 │   │   ├── components/          # React 组件
 │   │   ├── context/             # 状态管理
-│   │   └── hooks/               # 自定义 Hooks
-│   └── vite.config.js
+│   │   ├── hooks/               # 自定义 Hooks
+│   │   ├── types/               # TypeScript 类型定义
+│   │   └── lib/                 # 工具函数（cn、GSAP、Markdown）
+│   └── vite.config.ts
 ├── tests/                       # 测试文件
 ├── config/                      # 开发和默认配置
 ├── skills/                      # 技能文件存储目录
@@ -834,32 +836,49 @@ lukawi-agent/
 │   ├── test_tools/              # 工具测试
 │   └── test_integration/        # 集成测试
 │
-├── web/                         # React 前端
+├── web/                         # React + TypeScript 前端
 │   ├── index.html
 │   ├── package.json
-│   ├── vite.config.js
+│   ├── vite.config.ts
 │   └── src/
-│       ├── main.jsx
-│       ├── App.jsx
-│       ├── App.css
-│       ├── api.js               # API 客户端
+│       ├── main.tsx             # 入口文件
+│       ├── App.tsx              # 根组件
+│       ├── globals.css          # 全局样式（Tailwind + CSS 变量）
+│       ├── api.ts               # API 客户端
+│       ├── types/
+│       │   └── index.ts         # TypeScript 类型 + SSE 类型守卫
 │       ├── context/
-│       │   └── AppContext.jsx    # 全局状态
+│       │   └── AppContext.tsx   # 全局状态（Context + Reducer）
 │       ├── hooks/
-│       │   └── useSSE.js        # SSE Hook
+│       │   ├── useSSE.ts        # SSE 流式 Hook
+│       │   ├── useSessions.ts   # 会话管理 Hook
+│       │   └── useKnowledgeUpload.ts  # 文件上传 Hook
+│       ├── lib/
+│       │   ├── utils.ts         # cn() 工具函数
+│       │   ├── gsap.ts          # GSAP 动画辅助
+│       │   └── markdown.ts      # Markdown 处理
 │       └── components/
-│           ├── Header.jsx        # 顶栏
-│           ├── Sidebar.jsx       # 侧边栏
-│           ├── ChatPanel.jsx     # 聊天面板
-│           ├── MessageList.jsx   # 消息列表
-│           ├── InputBar.jsx      # 输入栏
-│           ├── StatusBar.jsx     # 状态栏
-│           ├── ToolCallCard.jsx  # 工具调用卡片
-│           ├── WelcomeScreen.jsx # 欢迎屏
-│           └── icons/           # 图标组件
+│           ├── Header.tsx        # 顶栏
+│           ├── Sidebar.tsx       # 侧边栏外壳
+│           ├── ChatPanel.tsx     # 聊天面板
+│           ├── MessageList.tsx   # 消息列表
+│           ├── InputBar.tsx      # 输入栏
+│           ├── StatusBar.tsx     # 状态栏
+│           ├── WelcomeScreen.tsx # 欢迎屏
+│           ├── ShortcutsPanel.tsx # 快捷键面板
+│           ├── Logo.tsx          # Logo 组件
+│           ├── ThinkingIndicator.tsx # 思考指示器
+│           └── sidebar/          # 侧边栏子组件
+│               ├── index.ts
+│               ├── Section.tsx
+│               ├── SessionList.tsx
+│               ├── ModelSelector.tsx
+│               ├── SkillToggle.tsx
+│               ├── McpStatus.tsx
+│               └── KnowledgeBase.tsx
 │
 └── dist/                        # 构建输出（sdist）
-    └── lukawi-0.1.0.tar.gz
+    └── lukawi-0.1.3.tar.gz
 ```
 
 ---

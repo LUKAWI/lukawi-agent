@@ -18,7 +18,7 @@ A lightweight, extensible AI Agent framework with ReAct loop, tool calling, memo
 - **MCP Protocol** — connect external tool servers (sequential thinking, code context, etc.)
 - **Memory** — session-based short-term + persistent long-term memory with search
 - **RAG Knowledge Base** — upload documents, semantic search via DashScope embeddings
-- **WebUI** — React-based chat interface with model switching, session management
+- **WebUI** — React + TypeScript chat interface with Tailwind CSS, GSAP animations, model switching, session management
 - **ChromaDB** — vector database for document retrieval, runs locally
 
 ---
@@ -157,7 +157,7 @@ MIT — see [LICENSE](./LICENSE)
 - **MCP 协议** — 连接外部工具服务器（分步推理、代码上下文等）
 - **记忆系统** — 基于会话的短期记忆 + 持久化长期记忆，支持搜索
 - **RAG 知识库** — 上传文档，通过 DashScope 嵌入做语义搜索
-- **WebUI** — 基于 React 的聊天界面，支持模型切换、会话管理
+- **WebUI** — 基于 React + TypeScript 的聊天界面，Tailwind CSS + GSAP 动画，支持模型切换、会话管理
 - **ChromaDB** — 本地运行的向量数据库，用于文档检索
 
 ---
