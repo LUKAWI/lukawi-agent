@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 
+from lukawi import __version__
 from lukawi.cli import create_agent_context, cleanup_context
 from lukawi.agent.core import AgentEventType
 from rich import print as rprint
@@ -26,7 +27,7 @@ def run_repl(
     )
 
     try:
-        rprint("[bold green]Lukawi Agent v0.1.3[/bold green]")
+        rprint(f"[bold green]Lukawi Agent v{__version__}[/bold green]")
         rprint("Type /help for commands, /quit to exit.")
 
         async def _handle_message(text: str) -> None:

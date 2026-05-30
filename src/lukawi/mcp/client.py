@@ -10,6 +10,7 @@ import sys
 from dataclasses import dataclass, field
 from typing import Any
 
+from lukawi import __version__
 from lukawi.tools.base import ToolDefinition, ToolResult, ToolParameter, ToolParameterType
 
 logger = logging.getLogger(__name__)
@@ -81,7 +82,7 @@ class MCPClient:
                 "capabilities": {},
                 "clientInfo": {
                     "name": "lukawi",
-                    "version": "0.1.3"
+                    "version": __version__
                 }
             })
 

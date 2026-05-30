@@ -8,6 +8,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
+from lukawi import __version__
 from lukawi.server.routes import create_router
 from lukawi.server.sse import create_sse_router
 
@@ -15,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 
 def create_app(state) -> FastAPI:
-    app = FastAPI(title="Lukawi Agent", version="0.1.3")
+    app = FastAPI(title="Lukawi Agent", version=__version__)
 
     app.add_middleware(
         CORSMiddleware,
