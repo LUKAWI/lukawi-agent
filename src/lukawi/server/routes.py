@@ -45,7 +45,12 @@ def create_router(state) -> APIRouter:
         if not state.model_registry:
             return {"models": [], "current": None}
         models = [
-            {"name": key, "model": info.name, "provider": info.provider}
+            {
+                "name": key,
+                "model": info.name,
+                "provider": info.provider,
+                "display_name": info.display_name if info.display_name else None
+            }
             for key, info in state.model_registry.list_registered()
         ]
         return {"models": models, "current": state.model_registry.current_name}

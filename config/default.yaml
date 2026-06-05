@@ -8,6 +8,8 @@ model:
   # Available model providers
   providers:
     deepseek:
+      # Provider type discriminator
+      type: deepseek
       # API key from environment variable
       api_key: ${DEEPSEEK_API_KEY}
       # Model to use (deepseek-v4-flash or deepseek-v4-pro)
@@ -17,14 +19,6 @@ model:
       # Maximum tokens per response
       max_tokens: 4096
       # Temperature for response generation (0.0 - 2.0)
-      temperature: 0.7
-
-    # DeepSeek V4 Pro — higher capability reasoning model
-    deepseek-v4-pro:
-      api_key: ${DEEPSEEK_API_KEY}
-      model: deepseek-v4-pro
-      base_url: https://api.deepseek.com
-      max_tokens: 4096
       temperature: 0.7
 
 # Tool Configuration

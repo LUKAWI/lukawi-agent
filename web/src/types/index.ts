@@ -2,6 +2,7 @@ export interface ModelInfo {
   name: string;
   model: string;
   provider: string;
+  display_name?: string;  // Optional display name for custom models
 }
 
 export interface SkillInfo {

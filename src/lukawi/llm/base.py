@@ -118,6 +118,7 @@ class ModelInfo:
     max_tokens: int = 4096
     supports_tools: bool = True
     supports_streaming: bool = True
+    display_name: str = ""  # Optional display name for custom models
 
 
 class LLMProvider(ABC):

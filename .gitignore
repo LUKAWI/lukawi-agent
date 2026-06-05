@@ -34,6 +34,7 @@ Desktop.ini
 
 # Project-specific
 memory_db/
+ppt/
 
 # Testing
 .pytest_cache/
@@ -76,3 +77,20 @@ skills-lock.json
 web/src/**/*.test.*
 web/src/test/
 web/vitest.config.ts
+
+# Remotion promo video project (large binary assets)
+lukawi-promo/
+lukawi-promo/out/
+
+# Standalone report files
+report_standalone.html
+report.html
+report_assets/
+_mermaid_build/
+
+# Web test artifacts
+web/screenshot*.cjs
+web/test-*.cjs
+web/final-test.cjs
+web/app-gfm-test.png
+web/GSAP_INTEGRATION_PLAN.md

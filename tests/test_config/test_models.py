@@ -41,6 +41,27 @@ class TestModelConfig:
         assert "mock" in config.providers
         assert config.default == "deepseek"
 
+    def test_custom_model_provider(self):
+        """Test that CustomModelConfig is correctly discriminated."""
+        config = ModelConfig(
+            default="my-custom",
+            providers={
+                "my-custom": {
+                    "type": "custom",
+                    "api_key": "sk-test",
+                    "model": "gpt-4",
+                    "base_url": "https://api.openai.com/v1",
+                    "name": "My GPT-4",
+                }
+            },
+        )
+        from lukawi.config.models import CustomModelConfig
+        provider = config.providers["my-custom"]
+        assert isinstance(provider, CustomModelConfig)
+        assert provider.model == "gpt-4"
+        assert provider.base_url == "https://api.openai.com/v1"
+        assert provider.name == "My GPT-4"
+
 
 class TestToolProfileConfig:
     def test_default_allows_all(self):

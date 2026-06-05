@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from lukawi.config.settings import load_config
-from lukawi.config.models import AgentConfig, AppConfig, DeepSeekConfig, MockConfig
+from lukawi.config.models import AgentConfig, AppConfig, DeepSeekConfig, CustomModelConfig, MockConfig
 from lukawi.llm.registry import ModelRegistry
 from lukawi.llm.deepseek import DeepSeekProvider
 from lukawi.llm.mock import MockProvider
@@ -55,6 +55,10 @@ def _setup_model_registry(config: AppConfig, mock: bool = False) -> ModelRegistr
     for name, provider_config in config.model.providers.items():
         if isinstance(provider_config, DeepSeekConfig):
             if provider_config.api_key:
+                registry.register(name, DeepSeekProvider(provider_config))
+        elif isinstance(provider_config, CustomModelConfig):
+            if provider_config.api_key:
+                # Reuse DeepSeekProvider for custom OpenAI-compatible APIs
                 registry.register(name, DeepSeekProvider(provider_config))
         elif isinstance(provider_config, MockConfig):
             registry.register(name, MockProvider())

@@ -265,5 +265,6 @@ class DeepSeekProvider(LLMProvider):
             provider="deepseek",
             max_tokens=self.config.max_tokens,
             supports_tools=True,
-            supports_streaming=True
+            supports_streaming=True,
+            display_name=getattr(self.config, 'name', '')
         )

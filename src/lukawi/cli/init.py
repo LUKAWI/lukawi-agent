@@ -6,9 +6,10 @@ import json
 import sys
 from pathlib import Path
 
+PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
 CONFIG_DIR = Path.home() / ".lukawi"
 MCP_CONFIG = CONFIG_DIR / "mcp-servers.json"
-ENV_FILE = Path.cwd() / ".env"
+ENV_FILE = PROJECT_ROOT / ".env"
 
 PRESET_MCP = [
     {
@@ -48,10 +49,18 @@ TEXTS = {
         "lang_prompt": "Choose language / 选择语言 (en/zh)",
         "step1_title": "Step 1: LLM Provider (Required)",
         "step1_desc1": "Lukawi supports any OpenAI-compatible API.",
-        "step1_desc2": "At minimum you need one API key.",
-        "deepseek_key_prompt": "DeepSeek API Key (for deepseek-chat / deepseek-reasoner)",
-        "deepseek_url_prompt": "DeepSeek Base URL",
-        "skipped_deepseek": "⚠ Skipped — DeepSeek will not be available.",
+        "step1_desc2": "Press Enter to use DeepSeek (default), or provide your own API endpoint.",
+        "step1_base_url_hint": "  Examples: https://api.openai.com/v1, https://api.deepseek.com",
+        "step1_base_url_note": "  No need to add /chat/completions — it's handled automatically.",
+        "current_base_url": "  Current: {url}",
+        "press_enter_clear": "  (Press Enter to clear and use DeepSeek, or type a new URL)",
+        "base_url_prompt": "API Base URL (press Enter for DeepSeek)",
+        "custom_model_id_prompt": "Model ID (e.g., gpt-4, claude-3-opus)",
+        "custom_model_key_prompt": "API Key",
+        "custom_model_name_prompt": "Display Name (for frontend, optional)",
+        "custom_model_added": "✓ Custom model added",
+        "deepseek_key_prompt": "DeepSeek API Key",
+        "skipped_deepseek": "⚠ Skipped — no API key provided.",
         "existing_key_hint": "  (existing key shown, press Enter to keep)",
         "step2_title": "Step 2: RAG / Knowledge Base (Optional)",
         "step2_desc1": "Enable document upload and semantic search.",
@@ -91,10 +100,18 @@ TEXTS = {
         "lang_prompt": "Choose language / 选择语言 (en/zh)",
         "step1_title": "步骤 1：LLM 模型提供商（必填）",
         "step1_desc1": "Lukawi 兼容所有 OpenAI 格式的 API。",
-        "step1_desc2": "至少需要一个 API 密钥。",
-        "deepseek_key_prompt": "DeepSeek API 密钥（用于 deepseek-chat / deepseek-reasoner）",
-        "deepseek_url_prompt": "DeepSeek Base URL",
-        "skipped_deepseek": "⚠ 已跳过 — DeepSeek 将不可用。",
+        "step1_desc2": "按回车使用 DeepSeek（默认），或输入您自己的 API 端点。",
+        "step1_base_url_hint": "  示例：https://api.openai.com/v1, https://api.deepseek.com",
+        "step1_base_url_note": "  无需添加 /chat/completions 后缀，系统会自动处理。",
+        "current_base_url": "  当前：{url}",
+        "press_enter_clear": "  （按回车清除并使用 DeepSeek，或输入新的 URL）",
+        "base_url_prompt": "API Base URL（按回车使用 DeepSeek）",
+        "custom_model_id_prompt": "模型 ID（例如：gpt-4、claude-3-opus）",
+        "custom_model_key_prompt": "API 密钥",
+        "custom_model_name_prompt": "显示名称（用于前端，可选）",
+        "custom_model_added": "✓ 自定义模型已添加",
+        "deepseek_key_prompt": "DeepSeek API 密钥",
+        "skipped_deepseek": "⚠ 已跳过 — 未提供 API 密钥。",
         "existing_key_hint": "  （显示已有密钥，按 Enter 保留）",
         "step2_title": "步骤 2：RAG 知识库（可选）",
         "step2_desc1": "启用文档上传和语义搜索。",
@@ -246,6 +263,9 @@ def _prompt(prompt_text: str, default: str = "", secret: bool = False) -> str:
 
 
 def _redraw_mcp(options, cursor, selected):
+    """Redraw the MCP selection menu."""
+    # Build lines
+    lines = []
     for i, opt in enumerate(options):
         prefix = " >" if i == cursor else "  "
         mark = _t("mcp_label_selected") if selected[i] else _t("mcp_label_empty")
@@ -253,21 +273,32 @@ def _redraw_mcp(options, cursor, selected):
         line = f"{prefix} {mark} {opt['name']}"
         if desc:
             line += f"  —  {desc}"
-        sys.stdout.write("\x1b[2K" + line + "\r\n")
+        lines.append(line)
     prefix = " >" if cursor == len(options) else "  "
-    sys.stdout.write(f"\x1b[2K{prefix}    {_t('mcp_add_custom')}...\r\n")
+    lines.append(f"{prefix}    {_t('mcp_add_custom')}...")
+    
+    # Output each line with \x1b[2K to clear the line first
+    output = ""
+    for i, line in enumerate(lines):
+        if i > 0:
+            output += "\n"  # Move to next line
+        output += "\x1b[2K" + "\r" + line  # Clear line, move to start, print
+    
+    sys.stdout.write(output)
+    sys.stdout.flush()
 
 
 def _multi_select(options) -> tuple[list[int], bool]:
     selected = [False] * len(options)
     cursor = 0
     n = len(options)
-    sys.stdout.write("\x1b[?25l")
-    sys.stdout.flush()
+    num_lines = n + 1  # n options + 1 "add custom" line
+    
     try:
         _redraw_mcp(options, cursor, selected)
         while True:
-            sys.stdout.write(f"\x1b[{n + 2}A")
+            # Move cursor up to beginning of menu
+            sys.stdout.write(f"\x1b[{num_lines}A")
             sys.stdout.flush()
             _redraw_mcp(options, cursor, selected)
             ch = _getch()
@@ -293,6 +324,7 @@ def _multi_select(options) -> tuple[list[int], bool]:
             elif ch == "escape":
                 return [], False
     finally:
+        # Ensure cursor is visible
         sys.stdout.write("\x1b[?25h")
         sys.stdout.flush()
 
@@ -353,20 +385,59 @@ def main() -> None:
     print()
     print(f"  {_t('step1_desc1')}")
     print(f"  {_t('step1_desc2')}")
+    print(f"{_t('step1_base_url_hint')}")
+    print(f"{_t('step1_base_url_note')}")
     print()
 
-    prev_ds = existing_env.get("DEEPSEEK_API_KEY", "")
-    if prev_ds:
-        print(f"  {_t('existing_key_hint')}")
-    deepseek_key = _prompt(f"  {_t('deepseek_key_prompt')}", default=prev_ds)
-    if deepseek_key:
-        config["DEEPSEEK_API_KEY"] = deepseek_key
-        config["DEEPSEEK_BASE_URL"] = _prompt(
-            f"  {_t('deepseek_url_prompt')}",
-            default=existing_env.get("DEEPSEEK_BASE_URL", "https://api.deepseek.com/v1"),
-        )
-    elif not prev_ds:
-        print(f"  {_t('skipped_deepseek')}")
+    # Track env vars to remove (stale from previous config)
+    env_to_remove: list[str] = []
+
+    # Ask for base URL first
+    prev_base_url = existing_env.get("CUSTOM_MODEL_BASE_URL", "")
+    if prev_base_url:
+        print(_t("current_base_url").format(url=prev_base_url))
+        print(_t("press_enter_clear"))
+    base_url = _prompt(f"  {_t('base_url_prompt')}", default="")
+    
+    if base_url:
+        # User provided a custom API endpoint — override stale DeepSeek key
+        env_to_remove.append("DEEPSEEK_API_KEY")
+
+        prev_model_id = existing_env.get("CUSTOM_MODEL_ID", "")
+        model_id = _prompt(f"  {_t('custom_model_id_prompt')}", default=prev_model_id)
+        
+        prev_api_key = existing_env.get("CUSTOM_MODEL_API_KEY", "")
+        if prev_api_key:
+            print(f"  {_t('existing_key_hint')}")
+        api_key = _prompt(f"  {_t('custom_model_key_prompt')}", default=prev_api_key, secret=True)
+        
+        prev_name = existing_env.get("CUSTOM_MODEL_NAME", "")
+        display_name = _prompt(f"  {_t('custom_model_name_prompt')}", default=prev_name)
+        
+        if model_id and api_key:
+            config["CUSTOM_MODEL_BASE_URL"] = base_url
+            config["CUSTOM_MODEL_ID"] = model_id
+            config["CUSTOM_MODEL_API_KEY"] = api_key
+            if display_name:
+                config["CUSTOM_MODEL_NAME"] = display_name
+            print(f"  {_t('custom_model_added')}")
+        else:
+            print(f"  {_t('skipped_deepseek')}")
+    else:
+        # User pressed Enter - use DeepSeek (default) — remove stale custom model vars
+        env_to_remove.extend([
+            "CUSTOM_MODEL_BASE_URL", "CUSTOM_MODEL_ID",
+            "CUSTOM_MODEL_API_KEY", "CUSTOM_MODEL_NAME",
+        ])
+
+        prev_ds = existing_env.get("DEEPSEEK_API_KEY", "")
+        if prev_ds:
+            print(f"  {_t('existing_key_hint')}")
+        deepseek_key = _prompt(f"  {_t('deepseek_key_prompt')}", default=prev_ds)
+        if deepseek_key:
+            config["DEEPSEEK_API_KEY"] = deepseek_key
+        elif not prev_ds:
+            print(f"  {_t('skipped_deepseek')}")
 
     print()
 
@@ -442,18 +513,29 @@ def main() -> None:
 
     CONFIG_DIR.mkdir(parents=True, exist_ok=True)
 
-    if config:
-        env_path = ENV_FILE
-        existing = {}
-        if env_path.exists():
-            with open(env_path, encoding="utf-8") as f:
-                for line in f:
-                    line = line.strip()
-                    if line and not line.startswith("#") and "=" in line:
-                        k, v = line.split("=", 1)
-                        existing[k.strip()] = v.strip().strip("\"'")
+    env_path = ENV_FILE
+    existing = {}
+    if env_path.exists():
+        with open(env_path, encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if line and not line.startswith("#") and "=" in line:
+                    k, v = line.split("=", 1)
+                    existing[k.strip()] = v.strip().strip("\"'")
 
+    # Remove stale env vars from the opposite config mode
+    for key in env_to_remove:
+        existing.pop(key, None)
+
+    # If switching to custom API with a system-level DEEPSEEK_API_KEY,
+    # write an empty override so load_dotenv(override=True) clears it
+    if base_url:
+        existing["DEEPSEEK_API_KEY"] = ""
+
+    if config:
         existing.update(config)
+
+    if config or env_to_remove:
         with open(env_path, "w", encoding="utf-8") as f:
             f.write("# Lukawi Agent — Environment Configuration\n")
             f.write("# Generated by lukawi-init\n\n")

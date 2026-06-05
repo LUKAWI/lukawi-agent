@@ -21,10 +21,7 @@ export function ModelSelector({ models, currentModel, onSelectModel }: ModelSele
           )}
           onClick={() => onSelectModel(m.name)}
         >
-          <span className="text-[13px] truncate">{m.model || m.name}</span>
-          <span className="ml-auto text-[11px] text-[var(--text-tertiary)] bg-[var(--surface-alt)] px-1 py-0.5 rounded-[3px]">
-            {m.provider}
-          </span>
+          <span className="text-[13px] truncate">{m.display_name || m.model || m.name}</span>
         </div>
       ))}
       {models.length === 0 && (

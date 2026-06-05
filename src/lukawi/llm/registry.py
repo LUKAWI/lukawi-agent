@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from lukawi.llm.base import LLMProvider, ModelInfo
-from lukawi.config.models import ModelConfig, DeepSeekConfig, MockConfig
+from lukawi.config.models import ModelConfig, DeepSeekConfig, CustomModelConfig, MockConfig
 
 
 class ModelNotFoundError(Exception):
@@ -75,12 +75,17 @@ class ModelRegistry:
 
         for name, provider_config in config.providers.items():
             if isinstance(provider_config, DeepSeekConfig):
+                if not provider_config.api_key:
+                    continue
                 from lukawi.llm.deepseek import DeepSeekProvider
-
+                provider = DeepSeekProvider(provider_config)
+            elif isinstance(provider_config, CustomModelConfig):
+                if not provider_config.api_key:
+                    continue
+                from lukawi.llm.deepseek import DeepSeekProvider
                 provider = DeepSeekProvider(provider_config)
             elif isinstance(provider_config, MockConfig):
                 from lukawi.llm.mock import MockProvider
-
                 provider = MockProvider()
             else:
                 continue

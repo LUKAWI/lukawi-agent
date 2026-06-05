@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any, Union
 
-from pydantic import BaseModel, Field
-from typing import Union
+from pydantic import BaseModel, Field, model_validator
 
 
 class DeepSeekConfig(BaseModel):
+    """Configuration for DeepSeek API provider."""
     api_key: str = ""
     model: str = "deepseek-v4-flash"
     base_url: str = "https://api.deepseek.com"
@@ -14,21 +15,60 @@ class DeepSeekConfig(BaseModel):
     temperature: float = Field(default=0.7, ge=0.0, le=2.0)
 
 
+class CustomModelConfig(BaseModel):
+    """Configuration for custom OpenAI-compatible API providers."""
+    api_key: str = ""
+    model: str = ""
+    base_url: str = ""
+    max_tokens: int = 4096
+    temperature: float = Field(default=0.7, ge=0.0, le=2.0)
+    name: str = ""  # Display name for frontend
+
+
 class MockConfig(BaseModel):
-    type: str = "mock"
     responses: list[str] = Field(
         default_factory=lambda: ["I'm a mock response for testing."]
     )
 
 
+ProviderConfig = Union[DeepSeekConfig, CustomModelConfig, MockConfig]
+
+
+def _parse_provider(data: dict[str, Any]) -> ProviderConfig:
+    """Parse a provider config dict into the appropriate Pydantic model."""
+    provider_type = data.get("type", "")
+    if provider_type == "custom":
+        return CustomModelConfig(**data)
+    elif provider_type == "mock":
+        return MockConfig(**data)
+    else:
+        # Default to DeepSeekConfig (backward compatible)
+        return DeepSeekConfig(**data)
+
+
 class ModelConfig(BaseModel):
     default: str = "deepseek"
-    providers: dict[str, Union[DeepSeekConfig, MockConfig]] = Field(
+    providers: dict[str, ProviderConfig] = Field(
         default_factory=lambda: {
             "deepseek": DeepSeekConfig(),
             "mock": MockConfig(),
         }
     )
+
+    @model_validator(mode="before")
+    @classmethod
+    def _resolve_providers(cls, data: Any) -> Any:
+        if isinstance(data, dict) and "providers" in data:
+            providers = data["providers"]
+            if isinstance(providers, dict):
+                resolved = {}
+                for name, cfg in providers.items():
+                    if isinstance(cfg, dict):
+                        resolved[name] = _parse_provider(cfg)
+                    else:
+                        resolved[name] = cfg
+                data["providers"] = resolved
+        return data
 
 
 class ToolProfileConfig(BaseModel):
