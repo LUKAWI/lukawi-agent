@@ -1,7 +1,6 @@
 """REST API routes for Lukawi server."""
 from __future__ import annotations
 
-import tempfile
 from pathlib import Path
 
 from fastapi import APIRouter, HTTPException, UploadFile

@@ -57,6 +57,7 @@ class Settings:
 
     @staticmethod
     def _normalize_db_path(data: dict) -> None:
+        """Normalize relative db_path and chroma_db_dir to absolute paths under ~/.lukawi/."""
         memory = data.get("memory", {})
         longterm = memory.get("longterm", {}) if isinstance(memory, dict) else {}
         db_path = longterm.get("db_path", "") if isinstance(longterm, dict) else ""
@@ -64,6 +65,13 @@ class Settings:
             path = Path(db_path)
             if not path.is_absolute():
                 longterm["db_path"] = str(Path.home() / ".lukawi" / path.name)
+
+        rag = data.get("rag", {})
+        chroma_dir = rag.get("chroma_db_dir", "") if isinstance(rag, dict) else ""
+        if chroma_dir:
+            path = Path(chroma_dir)
+            if not path.is_absolute():
+                rag["chroma_db_dir"] = str(Path.home() / ".lukawi" / path.name)
 
     @staticmethod
     def _add_custom_model_from_env(data: dict) -> None:
@@ -141,6 +149,6 @@ class Settings:
 
 
 def load_config(config_path: str | Path | None = None) -> AppConfig:
-    load_dotenv(dotenv_path=_PROJECT_ROOT / ".env", override=True)
+    load_dotenv(dotenv_path=Path.home() / ".lukawi" / ".env", override=True)
     settings = Settings(config_path)
     return settings.load()

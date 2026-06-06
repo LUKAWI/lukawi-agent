@@ -85,6 +85,9 @@ export default function Sidebar() {
           onToggleSkill={(name: string) => {
             const enabled = !state.activeSkills.includes(name);
             api.toggleSkill(name, enabled);
+            if (enabled) {
+              api.loadSkill(name);
+            }
             dispatch({ type: 'TOGGLE_ACTIVE_SKILL', payload: name });
           }}
         />

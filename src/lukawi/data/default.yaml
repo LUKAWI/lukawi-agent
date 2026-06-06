@@ -97,7 +97,7 @@ memory:
     context_window_tokens: 4000
   longterm:
     enabled: true
-    db_path: memory.db
+    db_path: ~/.lukawi/memory.db
     vector_search: false
     max_retrieval: 10
 

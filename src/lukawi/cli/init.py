@@ -6,10 +6,9 @@ import json
 import sys
 from pathlib import Path
 
-PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
 CONFIG_DIR = Path.home() / ".lukawi"
 MCP_CONFIG = CONFIG_DIR / "mcp-servers.json"
-ENV_FILE = PROJECT_ROOT / ".env"
+ENV_FILE = CONFIG_DIR / ".env"
 
 PRESET_MCP = [
     {

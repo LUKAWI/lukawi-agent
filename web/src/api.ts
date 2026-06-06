@@ -27,6 +27,8 @@ export const api = {
   getSkills: () => request<{ skills: SkillInfo[] }>('/api/skills'),
   toggleSkill: (name: string, enabled: boolean) =>
     request('/api/skills/toggle', { method: 'POST', body: JSON.stringify({ name, enabled }) }),
+  loadSkill: (name: string) =>
+    request<{ ok: boolean }>('/api/skills/load', { method: 'POST', body: JSON.stringify({ name }) }),
 
   getMcp: () => request<McpStatus>('/api/mcp'),
   connectMcp: () => request<{ ok: boolean }>('/api/mcp/connect', { method: 'POST' }),
