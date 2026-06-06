@@ -94,3 +94,7 @@ web/test-*.cjs
 web/final-test.cjs
 web/app-gfm-test.png
 web/GSAP_INTEGRATION_PLAN.md
+
+# Uncommitted project files
+ultrawork-notepad.md
+tests/
