@@ -1,6 +1,6 @@
 # Lukawi Agent
 
-[English](#english) | [中文](#chinese)
+[English](#english) | [中文](#chinese) | [详细中文文档 →](./README_CN.md)
 
 ---
 
@@ -13,7 +13,6 @@ A lightweight, extensible AI Agent framework with ReAct loop, tool calling, memo
 
 - **ReAct Loop Agent** — reasoning + acting with automatic tool calling
 - **Streaming Chat** — token-by-token real-time output in WebUI
-- **Any OpenAI-compatible API** — use DeepSeek, OpenAI, Claude, or any custom endpoint
 - **Tool System** — built-in tools: web fetch, file operations, shell commands
 - **Extensible Skills** — drop `SKILL.md` files to teach the agent new abilities
 - **MCP Protocol** — connect external tool servers (sequential thinking, code context, etc.)
@@ -39,24 +38,17 @@ lukawi-init
 ```
 
 This interactive wizard (bilingual EN/ZH) will guide you through:
-
-**LLM Provider (Required):**
-- Press **Enter** to use DeepSeek (default) — just provide your DeepSeek API Key
-- Or type a **custom API Base URL** to use any OpenAI-compatible provider (e.g., `https://api.openai.com/v1`), then enter:
-  - **Model ID** — e.g., `gpt-4`, `claude-3-opus`
-  - **API Key** — your provider's API key
-  - **Display Name** — optional name shown in WebUI
-
-**RAG / Knowledge Base (Optional):**
-- DashScope API Key for document upload & semantic search
-
-**MCP Servers (Optional):**
-- Select presets with Space key:
+- **LLM Provider** — Press Enter for DeepSeek (default), or provide your own OpenAI-compatible API:
+  - Custom Base URL (e.g. `https://api.openai.com/v1`)
+  - Model ID (e.g. `gpt-4`, `claude-3-opus`)
+  - API Key
+- **DashScope API Key** — optional, for document upload & semantic search
+- **MCP Servers** — optional, select presets with Space key:
   - `sequential-thinking` — step-by-step reasoning for complex problems
   - `context7` — up-to-date library documentation
   - `tavily` — real-time web search (requires [Tavily API Key](https://app.tavily.com))
 
-All keys are stored in a local `.env` file. They are **never** sent anywhere except to the API providers you configure.
+All keys are stored in a local `.env` file in the project root. They are **never** sent anywhere except to the API providers you configure.
 
 #### 3. Launch
 
@@ -89,14 +81,13 @@ Restart the agent to load new skills.
 Default configuration is bundled inside the package. Override with a local config file or `.env`:
 
 ```env
-# DeepSeek (default, leave empty if using custom provider)
+# DeepSeek (default) or use CUSTOM_MODEL_* for custom API
 DEEPSEEK_API_KEY=sk-...
 
-# Custom OpenAI-compatible API provider
+# Optional: custom OpenAI-compatible API
 CUSTOM_MODEL_BASE_URL=https://api.openai.com/v1
 CUSTOM_MODEL_ID=gpt-4
 CUSTOM_MODEL_API_KEY=sk-...
-CUSTOM_MODEL_NAME="GPT-4"
 
 # Optional: DashScope for RAG / Knowledge Base
 DASHSCOPE_API_KEY=sk-...
@@ -109,7 +100,7 @@ MCP servers are managed via `lukawi-init` and stored in `~/.lukawi/mcp-servers.j
 
 | Config File | Location |
 |---|---|
-| `.env` | Project root directory |
+| `.env` | Project root |
 | `mcp-servers.json` | `~/.lukawi/mcp-servers.json` |
 | Memory DB | `~/.lukawi/memory.db` |
 | ChromaDB | `~/.lukawi/chroma_db/` |
@@ -175,7 +166,6 @@ MIT — see [LICENSE](./LICENSE)
 
 - **ReAct 循环 Agent** — 推理 + 行动，自动工具调用
 - **流式输出** — WebUI 中逐 token 实时输出
-- **任意 OpenAI 兼容 API** — 支持 DeepSeek、OpenAI、Claude 或自定义端点
 - **工具系统** — 内置工具：网页抓取、文件操作、Shell 命令
 - **可扩展技能** — 放入 `SKILL.md` 文件即可教会 Agent 新能力
 - **MCP 协议** — 连接外部工具服务器（分步推理、代码上下文等）
@@ -200,20 +190,10 @@ pip install lukawi
 lukawi-init
 ```
 
-交互式配置向导（支持中/英文）会引导你完成：
-
-**LLM 模型提供商（必填）：**
-- 按 **回车键** 使用 DeepSeek（默认）——只需提供 DeepSeek API Key
-- 或输入 **自定义 API Base URL** 使用任意 OpenAI 兼容的提供商（例如 `https://api.openai.com/v1`），然后填写：
-  - **模型 ID** — 例如 `gpt-4`、`claude-3-opus`
-  - **API 密钥** — 提供商给你的 API Key
-  - **显示名称** — 可选，在 WebUI 中显示的名称
-
-**RAG 知识库（可选）：**
-- DashScope API Key，用于文档上传和语义搜索
-
-**MCP 服务器（可选）：**
-- 用空格键选择预设：
+交互式配置向导（支持中/英文）会引导你配置：
+- **DeepSeek API Key** — 必填，用于 LLM 对话
+- **DashScope API Key** — 可选，用于文档上传和语义搜索
+- **MCP 服务器** — 可选，用空格键选择预设：
   - `sequential-thinking` — 将复杂问题拆解为分步推理
   - `context7` — 提供最新库文档和代码上下文
   - `tavily` — 实时网络搜索（需要 [Tavily API Key](https://app.tavily.com)）
@@ -251,27 +231,18 @@ skills/
 默认配置随包发布。可通过本地配置文件或 `.env` 覆盖：
 
 ```env
-# DeepSeek（默认，如使用自定义提供商则留空）
+# 必填：DeepSeek API 密钥
 DEEPSEEK_API_KEY=sk-...
-
-# 自定义 OpenAI 兼容 API 提供商
-CUSTOM_MODEL_BASE_URL=https://api.openai.com/v1
-CUSTOM_MODEL_ID=gpt-4
-CUSTOM_MODEL_API_KEY=sk-...
-CUSTOM_MODEL_NAME="GPT-4"
 
 # 可选：DashScope 密钥（用于 RAG 知识库）
 DASHSCOPE_API_KEY=sk-...
-
-# 可选：Tavily 密钥（用于联网搜索）
-TAVILY_API_KEY=tvly-...
 ```
 
 MCP 服务器通过 `lukawi-init` 管理，配置存储在 `~/.lukawi/mcp-servers.json`。
 
 | 配置文件 | 位置 |
 |---|---|
-| `.env` | 项目根目录 |
+| `.env` | 当前工作目录 |
 | `mcp-servers.json` | `~/.lukawi/mcp-servers.json` |
 | 记忆数据库 | `~/.lukawi/memory.db` |
 | ChromaDB | `~/.lukawi/chroma_db/` |

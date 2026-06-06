@@ -158,11 +158,19 @@ pip install -e ".[dev]"
 #### 第一步：LLM 模型配置（必填）
 
 ```
+# 按回车使用 DeepSeek（默认）：
 DeepSeek API Key: sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+
+# 或输入自定义 OpenAI 兼容 API：
+API Base URL（按回车使用 DeepSeek）: https://api.openai.com/v1
+Model ID（例如：gpt-4、claude-3-opus）: gpt-4
+API 密钥: sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+显示名称（用于前端，可选）: GPT-4
 ```
 
-- 获取地址：https://platform.deepseek.com/api_keys
-- 这是 **必填项**，没有它 Agent 无法进行对话
+- 支持所有 OpenAI Chat Completions 兼容的 API
+- 如果输入自定义 Base URL，需要同时提供 Model ID 和 API Key
+- 显示名称会映射到 WebUI 模型选择界面
 
 #### 第二步：RAG 知识库配置（可选）
 
@@ -225,6 +233,10 @@ lukawi webui        # 启动服务，浏览器应自动打开
 |---|---|---|
 | `LUKAWI_PORT` | WebUI 服务端口 | `50109` |
 | `DEEPSEEK_API_KEY` | DeepSeek API 密钥 | — |
+| `CUSTOM_MODEL_BASE_URL` | 自定义 API Base URL | — |
+| `CUSTOM_MODEL_ID` | 自定义模型 ID | — |
+| `CUSTOM_MODEL_API_KEY` | 自定义 API 密钥 | — |
+| `CUSTOM_MODEL_NAME` | 自定义模型显示名称 | — |
 | `DASHSCOPE_API_KEY` | DashScope API 密钥 | — |
 
 ---
@@ -294,8 +306,13 @@ lukawi webui        # 启动服务，浏览器应自动打开
 在项目根目录创建 `.env` 文件（或运行 `lukawi-init` 自动生成）：
 
 ```env
-# 必填项
+# DeepSeek（默认），或使用 CUSTOM_MODEL_* 使用自定义 API
 DEEPSEEK_API_KEY=sk-your-deepseek-api-key
+
+# 自定义 OpenAI 兼容 API（可选）
+CUSTOM_MODEL_BASE_URL=https://api.openai.com/v1
+CUSTOM_MODEL_ID=gpt-4
+CUSTOM_MODEL_API_KEY=sk-...
 
 # 可选项（启用 RAG 知识库时需要）
 DASHSCOPE_API_KEY=sk-your-dashscope-api-key
@@ -308,7 +325,7 @@ TAVILY_API_KEY=tvly-xxxxxxxxx
 
 | 文件 | 路径 | 用途 |
 |---|---|---|
-| `.env` | 当前工作目录 | API 密钥和关键配置 |
+| `.env` | 项目根目录 | API 密钥和关键配置 |
 | `mcp-servers.json` | `~/.lukawi/mcp-servers.json` | MCP 服务器配置 |
 | 记忆数据库 | `~/.lukawi/memory.db` | SQLite 持久化记忆 |
 | ChromaDB | `~/.lukawi/chroma_db/` | 向量数据库（文档检索） |
@@ -622,13 +639,15 @@ rag:
 
 ## 模型切换
 
-Lukawi 支持多模型切换，当前支持的模型：
+Lukawi 支持多模型切换，当前支持的模型包括：
+
+> 实际可用模型取决于您在运行 `lukawi-init` 时的配置。默认使用 DeepSeek，也可以通过自定义 OpenAI 兼容 API 接入其他模型。
 
 | 模型名称 | 类型 | 说明 |
 |---|---|---|
 | `deepseek-v4-flash` | DeepSeek | 快速模型（默认） |
-| `deepseek-v4-pro` | DeepSeek | 专业模型（更强推理能力） |
 | `mock` | Mock | 测试模型（无需 API Key） |
+| 自定义 | OpenAI 兼容 | 通过 `lukawi-init` 配置 |
 
 ### 切换方法
 
@@ -640,26 +659,40 @@ Lukawi 支持多模型切换，当前支持的模型：
 lukawi models
 
 # 切换模型
-lukawi models --use deepseek-v4-pro
+lukawi models --use deepseek-v4-flash
 
 # 启动时指定模型
-lukawi webui --model deepseek-v4-pro
+lukawi webui --model deepseek-v4-flash
 ```
 
 ### 自定义模型
 
-Lukawi 兼容所有 OpenAI 兼容 API。在 `config/default.yaml` 中添加：
+Lukawi 兼容所有 OpenAI 兼容 API。运行 `lukawi-init` 后输入自定义 Base URL、Model ID 和 API Key 即可接入：
+
+```env
+# .env 配置文件内容示例
+CUSTOM_MODEL_BASE_URL=https://api.openai.com/v1
+CUSTOM_MODEL_ID=gpt-4
+CUSTOM_MODEL_API_KEY=sk-...
+CUSTOM_MODEL_NAME="GPT-4"
+```
+
+WebUI 中会显示 `CUSTOM_MODEL_NAME` 指定的模型名称。也支持在 `config/default.yaml` 中配置：
 
 ```yaml
 model:
   providers:
     my-custom-model:
+      type: custom
       api_key: ${MY_API_KEY}
       model: my-model-name
       base_url: https://my-api-endpoint.com/v1
       max_tokens: 4096
       temperature: 0.7
+      name: "My Custom Model"
 ```
+
+> 注意：自定义模型需要 `type: custom` 字段来与 DeepSeek 配置区分。
 
 ---
 
@@ -803,7 +836,7 @@ LUKAWI_PORT=8080 lukawi webui
 
 ### Q: 支持哪些 LLM 提供商？
 
-当前原生支持 DeepSeek。但 Lukawi 兼容所有 OpenAI 兼容 API，可通过修改 `config/default.yaml` 中的 `base_url` 接入其他提供商（如 OpenAI、Groq、Ollama 等）。
+Lukawi 默认使用 DeepSeek，同时支持所有 OpenAI Chat Completions 兼容的 API。运行 `lukawi-init` 后输入自定义 Base URL、Model ID 和 API Key 即可接入 OpenAI、Groq、Ollama（本地）等。也支持通过 `config/default.yaml` 的 `providers` 配置多个模型。
 
 ---
 
