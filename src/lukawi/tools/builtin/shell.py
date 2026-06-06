@@ -19,7 +19,7 @@ ALLOWED_COMMANDS: set[str] = {
     "date", "time", "whoami", "hostname",
 }
 
-CMD_BUILTINS: set[str] = {"dir", "type", "echo"}
+CMD_BUILTINS: set[str] = {"dir", "type", "echo", "date", "time"}
 
 SENSITIVE_DIR_PARTS = [
     "\\Windows\\System32",
@@ -180,8 +180,11 @@ async def exec_command_handler(
         }
 
         if using_cmd_exe:
+            cmd_for_exec = command
+            if cmd_name in ("date", "time") and "/t" not in command.lower():
+                cmd_for_exec = f"{command} /t"
             proc = await asyncio.create_subprocess_exec(
-                "cmd.exe", "/c", command,
+                "cmd.exe", "/c", cmd_for_exec,
                 **create_kwargs
             )
         else:

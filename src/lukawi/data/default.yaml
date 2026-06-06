@@ -5,14 +5,9 @@ model:
   default: deepseek
   providers:
     deepseek:
+      type: deepseek
       api_key: ${DEEPSEEK_API_KEY}
       model: deepseek-v4-flash
-      base_url: https://api.deepseek.com
-      max_tokens: 4096
-      temperature: 0.7
-    deepseek-v4-pro:
-      api_key: ${DEEPSEEK_API_KEY}
-      model: deepseek-v4-pro
       base_url: https://api.deepseek.com
       max_tokens: 4096
       temperature: 0.7
@@ -102,7 +97,7 @@ memory:
     context_window_tokens: 4000
   longterm:
     enabled: true
-    db_path: memory.db
+    db_path: ~/.lukawi/memory.db
     vector_search: false
     max_retrieval: 10
 

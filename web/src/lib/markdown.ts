@@ -8,7 +8,6 @@ import rehypeHighlight from 'rehype-highlight';
 import rehypeSanitize, { defaultSchema } from 'rehype-sanitize';
 import rehypeStringify from 'rehype-stringify';
 
-// Custom link renderer to open links in new tab
 const customLinkRenderer: Plugin = () => {
   return (tree) => {
     const visit = (node: any) => {
@@ -24,14 +23,13 @@ const customLinkRenderer: Plugin = () => {
   };
 };
 
-// Create the markdown processor
 // Pipeline order: parse → transform → SANITIZE → render math → stringify
 // rehypeSanitize MUST run BEFORE rehypeKatex so that KaTeX's complex HTML output
 // (inline styles, dozens of internal classes, aria-hidden, etc.) is never stripped.
 const processor = unified()
   .use(remarkParse)
   .use(remarkGfm, {
-    singleTilde: false, // GitHub uses ~~ for strikethrough
+    singleTilde: false,
   })
   .use(remarkMath)
   .use(remarkRehype)
@@ -52,7 +50,6 @@ const processor = unified()
         ...(defaultSchema.attributes?.div || []),
         ['className', /^math/],
       ],
-      // Allow syntax highlighting language classes
       code: [
         ...(defaultSchema.attributes?.code || []),
         ['className', /^(language-|hljs)/],
@@ -61,13 +58,11 @@ const processor = unified()
         ...(defaultSchema.attributes?.pre || []),
         ['className', /^(language-|hljs)/],
       ],
-      // Allow footnote attributes
       a: [
         ...(defaultSchema.attributes?.a || []),
         ['data-footnote-ref'],
         ['data-footnote-backref'],
       ],
-      // Allow task list checkboxes
       input: [
         ...(defaultSchema.attributes?.input || []),
         ['type', 'checkbox'],
@@ -95,17 +90,12 @@ const processor = unified()
   .use(customLinkRenderer)
   .use(rehypeStringify);
 
-/**
- * Process markdown content to HTML
- * Supports GFM, LaTeX math, and syntax highlighting
- */
 export function processMarkdown(content: string): string {
   try {
     const result = processor.processSync(content);
     return String(result);
   } catch (error) {
     console.error('Markdown processing error:', error);
-    // Fallback to basic HTML escaping
     return content
       .replace(/&/g, '&amp;')
       .replace(/</g, '&lt;')
@@ -115,16 +105,10 @@ export function processMarkdown(content: string): string {
   }
 }
 
-/**
- * Check if content contains LaTeX math expressions
- */
 export function hasMathContent(content: string): boolean {
   return content.includes('$') || content.includes('\\(') || content.includes('\\[');
 }
 
-/**
- * Check if content contains code blocks
- */
 export function hasCodeBlocks(content: string): boolean {
   return content.includes('```') || content.includes('~~~');
 }

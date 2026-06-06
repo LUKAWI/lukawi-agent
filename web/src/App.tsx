@@ -4,7 +4,6 @@ import { api } from './api';
 import Header from './components/Header';
 import Sidebar from './components/Sidebar';
 import ChatPanel from './components/ChatPanel';
-import StatusBar from './components/StatusBar';
 import ShortcutsPanel from './components/ShortcutsPanel';
 import type { StatusData } from './types';
 import './globals.css';
@@ -47,7 +46,6 @@ function AppContent() {
         <Sidebar />
         <ChatPanel />
       </div>
-      <StatusBar />
       <ShortcutsPanel
         open={state.detailPanelOpen}
         onClose={() => dispatch({ type: 'TOGGLE_DETAIL_PANEL' })}

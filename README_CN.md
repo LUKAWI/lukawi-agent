@@ -94,7 +94,7 @@ Lukawi Agent 是一个完全本地化的 AI Agent 框架。你只需要提供 AP
 | **知识库（RAG）** | 文档上传、切片、向量化、语义检索 | ChromaDB、DashScope Embedding |
 | **技能（Skills）** | 通过 SKILL.md 扩增提示词 | 声明式 YAML front-matter |
 | **MCP 协议** | 接入外部工具服务器 | Model Context Protocol |
-| **WebUI** | React 聊天界面、会话管理、文档管理 | React + Vite + SSE |
+| **WebUI** | React + TypeScript 聊天界面、会话管理、文档管理 | React + TypeScript + Vite + Tailwind CSS + GSAP + SSE |
 | **终端 REPL** | 命令行交互式对话 | Rich 美化输出 |
 | **初始化向导** | 交互式配置 API 密钥和 MCP 服务器 | 终端原生输入（跨平台） |
 
@@ -299,6 +299,9 @@ DEEPSEEK_API_KEY=sk-your-deepseek-api-key
 
 # 可选项（启用 RAG 知识库时需要）
 DASHSCOPE_API_KEY=sk-your-dashscope-api-key
+
+# 可选项（启用 Tavily 网络搜索时需要）
+TAVILY_API_KEY=tvly-xxxxxxxxx
 ```
 
 ### 配置文件存储位置
@@ -435,6 +438,67 @@ MCP（Model Context Protocol）允许 Agent 通过标准化协议连接外部工
 |---|---|---|
 | **sequential-thinking** | 将复杂问题拆解为逐步推理 | 通过 `lukawi-init` 勾选，自动安装 |
 | **context7** | 提供最新库文档和代码上下文 | 通过 `lukawi-init` 勾选，自动安装 |
+| **tavily** | 实时网络搜索 | 通过 `lukawi-init` 勾选，自动安装 |
+
+### 配置 Tavily 网络搜索
+
+Tavily 提供实时网络搜索能力，让 Agent 能够获取最新信息。
+
+#### 配置步骤
+
+1. **获取 API Key**
+
+   访问 [https://app.tavily.com](https://app.tavily.com) 注册并获取 API Key
+
+2. **运行初始化向导**
+
+   ```bash
+   lukawi-init
+   ```
+
+3. **选择 Tavily 服务器**
+
+   在 MCP 服务器选择界面，用 **空格键** 勾选 `tavily`：
+
+   ```
+    > [x] sequential-thinking  — 将复杂问题拆解为分步推理
+      [x] context7             — 提供最新库文档和代码上下文
+      [x] tavily               — 通过 Tavily API 进行实时网络搜索
+   ```
+
+4. **输入 API Key**
+
+   向导会提示输入 Tavily API Key：
+
+   ```
+   Tavily API 密钥（用于联网搜索，获取地址：https://app.tavily.com）: tvly-xxxxxxxxx
+   ```
+
+   > ⚠️ 如果选择了 Tavily 但未提供 API Key，MCP 将无法连接。
+
+5. **验证配置**
+
+   启动 WebUI 后，在侧边栏 MCP 面板中确认 Tavily 服务器已连接。
+
+#### 手动配置
+
+如果需要手动配置，编辑 `~/.lukawi/mcp-servers.json`：
+
+```json
+[
+  {
+    "name": "tavily",
+    "command": "npx",
+    "args": ["-y", "tavily-mcp@0.2.0"]
+  }
+]
+```
+
+并在 `.env` 文件中添加：
+
+```env
+TAVILY_API_KEY=tvly-xxxxxxxxx
+```
 
 ### 添加自定义 MCP 服务器
 
@@ -459,6 +523,11 @@ MCP（Model Context Protocol）允许 Agent 通过标准化协议连接外部工
     "name": "context7",
     "command": "npx",
     "args": ["-y", "@upstash/context7-mcp"]
+  },
+  {
+    "name": "tavily",
+    "command": "npx",
+    "args": ["-y", "tavily-mcp@0.2.0"]
   }
 ]
 ```
@@ -612,12 +681,14 @@ lukawi-agent/
 │   ├── skills/                  # 技能加载和执行器
 │   ├── tools/                   # 工具系统（注册、执行、策略）
 │   └── utils/                   # 工具函数（日志、辅助）
-├── web/                         # React 前端
+├── web/                         # React + TypeScript 前端
 │   ├── src/
 │   │   ├── components/          # React 组件
 │   │   ├── context/             # 状态管理
-│   │   └── hooks/               # 自定义 Hooks
-│   └── vite.config.js
+│   │   ├── hooks/               # 自定义 Hooks
+│   │   ├── types/               # TypeScript 类型定义
+│   │   └── lib/                 # 工具函数（cn、GSAP、Markdown）
+│   └── vite.config.ts
 ├── tests/                       # 测试文件
 ├── config/                      # 开发和默认配置
 ├── skills/                      # 技能文件存储目录
@@ -643,7 +714,7 @@ npm run build
 cd ..
 
 # 运行测试
-python -m pytest
+pytest
 
 # 启动开发服务器
 lukawi webui
@@ -653,15 +724,15 @@ lukawi webui
 
 ```bash
 # 运行所有测试
-python -m pytest
+pytest
 
 # 运行特定模块测试
-python -m pytest -v tests/test_agent/
-python -m pytest -v tests/test_rag/
-python -m pytest -v tests/test_tools/
+pytest tests/test_agent/
+pytest tests/test_rag/
+pytest tests/test_tools/
 
 # 带覆盖率
-python -m pytest --cov=src/lukawi --cov-report=html
+pytest --cov=src/lukawi --cov-report=html
 ```
 
 ### 代码规范
@@ -670,13 +741,13 @@ python -m pytest --cov=src/lukawi --cov-report=html
 
 ```bash
 # 代码检查
-python -m ruff check src/
+ruff check src/
 
 # 自动修复
-python -m ruff check --fix src/
+ruff check --fix src/
 
 # 类型检查
-python -m mypy src/
+mypy src/
 ```
 
 ---
@@ -834,31 +905,49 @@ lukawi-agent/
 │   ├── test_tools/              # 工具测试
 │   └── test_integration/        # 集成测试
 │
-└── web/                         # React 前端
-    ├── index.html
-    ├── package.json
-    ├── vite.config.js
-    └── src/
-        ├── main.jsx
-        ├── App.jsx
-        ├── App.css
-        ├── api.js               # API 客户端
-        ├── context/
-        │   └── AppContext.jsx    # 全局状态
-        ├── hooks/
-        │   └── useSSE.js        # SSE Hook
-        └── components/
-            ├── Header.jsx        # 顶栏
-            ├── Sidebar.jsx       # 侧边栏
-            ├── ChatPanel.jsx     # 聊天面板
-            ├── MessageList.jsx   # 消息列表
-            ├── InputBar.jsx      # 输入栏
-            ├── StatusBar.jsx     # 状态栏
-            ├── ToolCallCard.jsx  # 工具调用卡片
-            ├── WelcomeScreen.jsx # 欢迎屏
-            └── icons/           # 图标组件
-
-
+├── web/                         # React + TypeScript 前端
+│   ├── index.html
+│   ├── package.json
+│   ├── vite.config.ts
+│   └── src/
+│       ├── main.tsx             # 入口文件
+│       ├── App.tsx              # 根组件
+│       ├── globals.css          # 全局样式（Tailwind + CSS 变量）
+│       ├── api.ts               # API 客户端
+│       ├── types/
+│       │   └── index.ts         # TypeScript 类型 + SSE 类型守卫
+│       ├── context/
+│       │   └── AppContext.tsx   # 全局状态（Context + Reducer）
+│       ├── hooks/
+│       │   ├── useSSE.ts        # SSE 流式 Hook
+│       │   ├── useSessions.ts   # 会话管理 Hook
+│       │   └── useKnowledgeUpload.ts  # 文件上传 Hook
+│       ├── lib/
+│       │   ├── utils.ts         # cn() 工具函数
+│       │   ├── gsap.ts          # GSAP 动画辅助
+│       │   └── markdown.ts      # Markdown 处理
+│       └── components/
+│           ├── Header.tsx        # 顶栏
+│           ├── Sidebar.tsx       # 侧边栏外壳
+│           ├── ChatPanel.tsx     # 聊天面板
+│           ├── MessageList.tsx   # 消息列表
+│           ├── InputBar.tsx      # 输入栏
+│           ├── StatusBar.tsx     # 状态栏
+│           ├── WelcomeScreen.tsx # 欢迎屏
+│           ├── ShortcutsPanel.tsx # 快捷键面板
+│           ├── Logo.tsx          # Logo 组件
+│           ├── ThinkingIndicator.tsx # 思考指示器
+│           └── sidebar/          # 侧边栏子组件
+│               ├── index.ts
+│               ├── Section.tsx
+│               ├── SessionList.tsx
+│               ├── ModelSelector.tsx
+│               ├── SkillToggle.tsx
+│               ├── McpStatus.tsx
+│               └── KnowledgeBase.tsx
+│
+└── dist/                        # 构建输出（sdist）
+    └── lukawi-0.1.3.tar.gz
 ```
 
 ---

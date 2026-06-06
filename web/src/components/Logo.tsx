@@ -1,28 +1,51 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { cn } from '../lib/utils';
+import { gsap, useGSAP } from '../lib/gsap';
 
 interface LogoProps {
   size?: number;
   className?: string;
 }
 
-/**
- * Lukawi Agent Logo — "Radiant Node"
- *
- * 6-fold rotational symmetry. No letters, pure geometric abstraction.
- * Reference: OpenAI's mathematical precision + Claude's radial energy.
- *
- * Elements:
- * - 6 curved neural paths at 60° intervals, each with terminal node
- * - Inner depth arcs for dimensionality
- * - Central core dot
- * - Color inherits from CSS currentColor → matches UI accent (orange)
- */
+// Lukawi Agent Logo — 6-fold rotational symmetry
 export default function Logo({ size = 48, className }: LogoProps) {
   const s = size;
+  const logoRef = useRef<HTMLDivElement>(null);
+
+  useGSAP(() => {
+    if (!logoRef.current) return;
+
+    const circles = logoRef.current.querySelectorAll('circle');
+    const mm = gsap.matchMedia();
+
+    mm.add('(prefers-reduced-motion: no-preference)', () => {
+      gsap.to(circles, {
+        scale: 1.05,
+        opacity: 0.8,
+        repeat: -1,
+        yoyo: true,
+        duration: 2,
+        ease: 'sine.inOut',
+        transformOrigin: 'center center',
+      });
+
+      gsap.to(logoRef.current, {
+        rotation: 2,
+        repeat: -1,
+        yoyo: true,
+        duration: 4,
+        ease: 'sine.inOut',
+      });
+    });
+
+    return () => {
+      mm.revert();
+    };
+  }, { scope: logoRef });
 
   return (
     <div
+      ref={logoRef}
       className={cn('flex items-center justify-center shrink-0', className)}
       style={{ width: s, height: s, color: 'var(--accent)' }}
       role="img"

@@ -18,7 +18,7 @@ A lightweight, extensible AI Agent framework with ReAct loop, tool calling, memo
 - **MCP Protocol** — connect external tool servers (sequential thinking, code context, etc.)
 - **Memory** — session-based short-term + persistent long-term memory with search
 - **RAG Knowledge Base** — upload documents, semantic search via DashScope embeddings
-- **WebUI** — React-based chat interface with model switching, session management
+- **WebUI** — React + TypeScript chat interface with Tailwind CSS, GSAP animations, model switching, session management
 - **ChromaDB** — vector database for document retrieval, runs locally
 
 ---
@@ -40,7 +40,10 @@ lukawi-init
 This interactive wizard (bilingual EN/ZH) will guide you through:
 - **DeepSeek API Key** — required for LLM chat
 - **DashScope API Key** — optional, for document upload & semantic search
-- **MCP Servers** — optional, select presets (sequential-thinking, context7) with Space key
+- **MCP Servers** — optional, select presets with Space key:
+  - `sequential-thinking` — step-by-step reasoning for complex problems
+  - `context7` — up-to-date library documentation
+  - `tavily` — real-time web search (requires [Tavily API Key](https://app.tavily.com))
 
 All keys are stored in a local `.env` file. They are **never** sent anywhere except to the API providers you configure.
 
@@ -80,6 +83,9 @@ DEEPSEEK_API_KEY=sk-...
 
 # Optional: DashScope for RAG / Knowledge Base
 DASHSCOPE_API_KEY=sk-...
+
+# Optional: Tavily for web search
+TAVILY_API_KEY=tvly-...
 ```
 
 MCP servers are managed via `lukawi-init` and stored in `~/.lukawi/mcp-servers.json`.
@@ -157,7 +163,7 @@ MIT — see [LICENSE](./LICENSE)
 - **MCP 协议** — 连接外部工具服务器（分步推理、代码上下文等）
 - **记忆系统** — 基于会话的短期记忆 + 持久化长期记忆，支持搜索
 - **RAG 知识库** — 上传文档，通过 DashScope 嵌入做语义搜索
-- **WebUI** — 基于 React 的聊天界面，支持模型切换、会话管理
+- **WebUI** — 基于 React + TypeScript 的聊天界面，Tailwind CSS + GSAP 动画，支持模型切换、会话管理
 - **ChromaDB** — 本地运行的向量数据库，用于文档检索
 
 ---
@@ -179,7 +185,10 @@ lukawi-init
 交互式配置向导（支持中/英文）会引导你配置：
 - **DeepSeek API Key** — 必填，用于 LLM 对话
 - **DashScope API Key** — 可选，用于文档上传和语义搜索
-- **MCP 服务器** — 可选，用空格键选择预设（sequential-thinking、context7）
+- **MCP 服务器** — 可选，用空格键选择预设：
+  - `sequential-thinking` — 将复杂问题拆解为分步推理
+  - `context7` — 提供最新库文档和代码上下文
+  - `tavily` — 实时网络搜索（需要 [Tavily API Key](https://app.tavily.com)）
 
 所有密钥保存在本地 `.env` 文件中，**绝不会**发送到你配置的 API 提供商以外的任何地方。
 

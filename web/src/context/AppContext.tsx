@@ -10,6 +10,7 @@ const initialState: AppState = {
   messages: [],
   streamingId: null,
   isLoading: false,
+  isThinking: false,
   models: [],
   currentModel: '',
   skills: [],
@@ -47,6 +48,7 @@ function reducer(state: AppState, action: AppAction): AppState {
       if (!state.streamingId) return state;
       return {
         ...state,
+        isThinking: false,
         messages: state.messages.map((m) => {
           if (m.id !== state.streamingId) return m;
           const blocks = [...(m.blocks || [])];
@@ -95,7 +97,10 @@ function reducer(state: AppState, action: AppAction): AppState {
     }
 
     case 'FINISH_STREAMING':
-      return { ...state, streamingId: null, isLoading: false };
+      return { ...state, streamingId: null, isLoading: false, isThinking: false };
+
+    case 'SET_THINKING':
+      return { ...state, isThinking: action.payload };
 
     case 'SET_MODELS':
       return { ...state, models: action.payload.models, currentModel: action.payload.current };
